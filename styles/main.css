@@ -57,6 +57,7 @@
 .linter-panel {
   overflow: hidden;
   cursor: default;
+  user-select: none;
   display: flex;
   flex-direction: column;
   height: 100%;
