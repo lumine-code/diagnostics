@@ -851,14 +851,18 @@ describe("lib/linter-panel", () => {
       expect(row.querySelector(".linter-file-path").textContent).toBe("untitled");
     });
 
-    it("reveals it through the workspace in the editor holding the buffer", async () => {
+    it("reveals it through the workspace in the editor's shared scroll zone", async () => {
       const open = spyOn(lumine.workspace, "open").and.callThrough();
+      const requestedScroll = jasmine.createSpy("requested scroll");
+      editor.onDidRequestAutoscroll(requestedScroll);
+      lumine.config.set("editor.scrollZone", [25, 75]);
       await publishBufferMessage();
 
       await panel._openMessage(messages[0]);
 
       expect(open).toHaveBeenCalledWith(editor, { searchAllPanes: true });
       expect(editor.getCursorBufferPosition()).toEqual([0, 6]);
+      expect(requestedScroll.calls.mostRecent().args[0].options.mode).toEqual([25, 75]);
     });
 
     it("does nothing when no editor is showing the buffer any more", async () => {

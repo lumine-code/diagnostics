@@ -1017,7 +1017,7 @@ class LinterPanel {
       if (!editor) return;
       const opened = await lumine.workspace.open(editor, { searchAllPanes: true });
       if (!opened) return;
-      editor.setCursorBufferPosition(message.location.position.start);
+      editor.setCursorBufferPosition(message.location.position.start, { mode: "zone" });
       editor.element.focus();
       return;
     }
