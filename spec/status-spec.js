@@ -53,13 +53,12 @@ describe("lib/status", () => {
     content.innerHTML = tooltip.getTitle();
     const rows = content.querySelectorAll(".tooltip-composite-item");
 
-    expect(rows.length).toBe(5);
+    expect(rows.length).toBe(4);
     expect(rows[0].textContent).toContain("Toggle panel");
     expect(rows[0].textContent).toContain("LMB");
     expect(rows[1].textContent).toContain("MMB");
-    expect(rows[2].textContent).toContain(cmdOrCtrl("MMB"));
-    expect(rows[3].textContent).toContain("RMB");
-    expect(rows[4].textContent).toContain(cmdOrCtrl("RMB"));
+    expect(rows[2].textContent).toContain(cmdOrCtrl("LMB"));
+    expect(rows[3].textContent).toContain("Shift+LMB");
   });
 
   it("keeps a populated status-bar tile before an editor exists", () => {

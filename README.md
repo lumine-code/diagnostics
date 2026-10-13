@@ -53,6 +53,8 @@ Restyle the panel from your `styles.css`:
 
 The row height is read back in JavaScript to decide how many rows the viewport wants, so it has to resolve to a length.
 
+Right-click the status counter to open the panel, navigate messages, choose Active File or Whole Project, or clear messages. Left-click toggles the panel, middle-click switches file/project mode, Cmd/Ctrl-click goes to the next message, and Shift-click goes to the previous one.
+
 ## Services
 
 - `linter.ui`: provided to receive the messages the linter holds, and the handle it answers questions about them through.
