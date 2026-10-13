@@ -55,7 +55,7 @@ Restyle the panel from your `styles.css`:
 
 The row height is read back in JavaScript to decide how many rows the viewport wants, so it has to resolve to a length.
 
-Left-click the status counter to toggle the panel, middle-click to switch file/project mode, Cmd/Ctrl-click to go to the next message, and Shift-click to go to the previous one. Right-click for the complete action menu, including clearing messages.
+Left-click the status counter to toggle the panel, middle-click to switch file/project mode, Cmd/Ctrl-click to go to the next message, and Shift-click to go to the previous one. Right-click for the complete action menu, including focusing the panel and clearing messages.
 
 ## Services
 

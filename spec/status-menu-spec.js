@@ -1,14 +1,15 @@
 const { fakeHub } = require("./fake-hub");
 
 describe("Linter status action menu", () => {
-  let tile;
+  let tile, editor, cursorEditor;
   beforeEach(async () => {
     jasmine.useRealClock();
     jasmine.attachToDOM(lumine.workspace.getElement());
     await lumine.packages.activatePackage("status-bar");
     const main = (await lumine.packages.activatePackage("linter-panel")).mainModule;
-    const editor = await lumine.workspace.open();
-    main.provideLinterUI().attach(fakeHub({ editor: () => editor }));
+    editor = await lumine.workspace.open();
+    cursorEditor = editor;
+    main.provideLinterUI().attach(fakeHub({ editor: () => cursorEditor }));
     tile = lumine.workspace.getElement().querySelector(".linter-status");
   });
   afterEach(async () => {
@@ -22,6 +23,7 @@ describe("Linter status action menu", () => {
         .map((item) => item.command),
     ).toEqual([
       "linter-panel:toggle",
+      "linter-panel:toggle-focus",
       "linter:next",
       "linter:previous",
       "linter-panel:file-mode",
@@ -32,6 +34,52 @@ describe("Linter status action menu", () => {
     await lumine.commands.dispatch(tile, "linter-panel:project-mode");
     expect(menu().find((item) => item.command === "linter-panel:file-mode").checked).toBe(false);
     expect(menu().find((item) => item.command === "linter-panel:project-mode").checked).toBe(true);
+  });
+  it("shows Alt-L only for focusing and editor-scoped navigation keys only with a cursor editor", () => {
+    const keys = lumine.keymaps.add("linter-status-editor-shortcuts-spec", {
+      "lumine-text-editor:not([mini])": {
+        "alt-'": "linter:next",
+        "alt-;": "linter:previous",
+      },
+    });
+    try {
+      const menu = () => lumine.contextMenu.templateForElement(tile);
+      const items = menu();
+      const label = process.platform === "darwin" ? "⌥L" : "Alt+L";
+      expect(
+        items.find((item) => item.command === "linter-panel:toggle").keyBindingLabel,
+      ).toBeUndefined();
+      expect(
+        items.find((item) => item.command === "linter-panel:toggle-focus").keyBindingLabel,
+      ).toBe(label);
+      expect(items.find((item) => item.command === "linter:next").keyBindingLabel).toBe(
+        process.platform === "darwin" ? "⌥'" : "Alt+'",
+      );
+      expect(items.find((item) => item.command === "linter:previous").keyBindingLabel).toBe(
+        process.platform === "darwin" ? "⌥;" : "Alt+;",
+      );
+      const popup = lumine.contextMenu.show(tile, items);
+      try {
+        expect(
+          popup.rootList.items.find((item) => item.template.command === "linter-panel:toggle-focus")
+            .keystrokeElement.textContent,
+        ).toBe(label);
+        expect(
+          popup.rootList.items.find((item) => item.template.command === "linter-panel:toggle")
+            .keystrokeElement.textContent,
+        ).toBe("");
+      } finally {
+        popup.close();
+      }
+      cursorEditor = null;
+      lumine.packages
+        .getActivePackage("linter-panel")
+        .mainModule.provideLinterUI()
+        .didChangeActiveItem();
+      expect(menu().find((item) => item.command === "linter:next").keyBindingLabel).toBe("");
+    } finally {
+      keys.dispose();
+    }
   });
   it("dispatches popular gestures through menu commands without right-button effects", () => {
     const dispatch = spyOn(lumine.commands, "dispatch");
