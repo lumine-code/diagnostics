@@ -15,6 +15,8 @@ The front end for the [linter](https://github.com/lumine-code/linter) package. W
 - **Notebook positions**: a message that names a cell is labelled and sorted by it, so a diagnostic in a notebook reads as `[cell]:line:col`.
 - **Windowed rendering**: only the rows the viewport can show are built, so a project with tens of thousands of messages costs what one screen costs.
 
+![Inspect a TypeScript error in the diagnostics panel and its source code.](.github/demo.png)
+
 ## Installation
 
 To install `linter-panel` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/linter-panel`.

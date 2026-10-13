@@ -1,0 +1,16 @@
+{
+  "title": "linter-panel",
+  "description": "Inspect a TypeScript error in the diagnostics panel and its source code.",
+  "recordedOn": "2026-10-13",
+  "sourceRevision": "ffab658083ad53e88af1cd24c9a57dc02fae494d",
+  "mode": "normal",
+  "fontSettings": "default",
+  "images": [
+    {
+      "file": "demo.png",
+      "label": "Inspect a TypeScript error in the diagnostics panel and its source code.",
+      "width": 1100,
+      "height": 490
+    }
+  ]
+}
