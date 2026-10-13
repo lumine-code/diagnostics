@@ -1,17 +1,20 @@
 {
-  // Right-click a row to take its text. Declared here rather than added from
-  // the panel's constructor: a menu file is registered once for the package,
-  // where lumine.contextMenu.add never de-duplicates.
-  "context-menu": {
-    ".linter-panel .linter-row": [
-      { "type": "separator" },
-      { "label": "Copy Description", "command": "linter-panel:copy-description" },
-      { "label": "Copy Details", "command": "linter-panel:copy-details" },
-      { "type": "separator" }
-    ]
-  },
   // Packages > Linter Panel menu. Four items, so flat.
   "menu": [
+    {
+      "label": "View",
+      "submenu": [
+        {
+          "label": "Toggle View",
+          "submenu": [
+            {
+              "label": "Linter Panel",
+              "command": "linter-panel:toggle"
+            }
+          ]
+        }
+      ]
+    },
     {
       "label": "Packages",
       "submenu": [
@@ -26,5 +29,16 @@
         }
       ]
     }
-  ]
+  ],
+  // Right-click a row to take its text. Declared here rather than added from
+  // the panel's constructor: a menu file is registered once for the package,
+  // where lumine.contextMenu.add never de-duplicates.
+  "context-menu": {
+    ".linter-panel .linter-row": [
+      { "type": "separator" },
+      { "label": "Copy Description", "command": "linter-panel:copy-description" },
+      { "label": "Copy Details", "command": "linter-panel:copy-details" },
+      { "type": "separator" }
+    ]
+  }
 }
