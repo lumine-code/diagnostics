@@ -2,8 +2,6 @@ const { StatusPanel } = require("../lib/status");
 const { Front } = require("../lib/front");
 const { fakeHub, SEVERITIES } = require("./fake-hub");
 
-const cmdOrCtrl = (button) => (process.platform === "darwin" ? `⌘${button}` : `Ctrl+${button}`);
-
 // The status band is built from the severity vocabulary the hub hands over, one
 // tile per severity. These specs pin the two ways the tiers are deliberately not
 // uniform: the quiet tier hides itself at zero, and it never keeps the band open
@@ -47,18 +45,11 @@ describe("lib/status", () => {
     expect(tileFor("hint").counter.querySelector(".icon").classList).toContain("icon-light-bulb");
   });
 
-  it("describes each status interaction in a composite tooltip", () => {
+  it("describes the state and primary action in plain prose", () => {
     const [tooltip] = lumine.tooltips.findTooltips(status.element);
-    const content = document.createElement("div");
-    content.innerHTML = tooltip.getTitle();
-    const rows = content.querySelectorAll(".tooltip-composite-item");
-
-    expect(rows.length).toBe(4);
-    expect(rows[0].textContent).toContain("Toggle panel");
-    expect(rows[0].textContent).toContain("LMB");
-    expect(rows[1].textContent).toContain("MMB");
-    expect(rows[2].textContent).toContain(cmdOrCtrl("LMB"));
-    expect(rows[3].textContent).toContain("Shift+LMB");
+    expect(tooltip.getTitle()).toBe("File diagnostics. Click to toggle the panel.");
+    front.setViewMode("project");
+    expect(tooltip.getTitle()).toBe("Project diagnostics. Click to toggle the panel.");
   });
 
   it("keeps a populated status-bar tile before an editor exists", () => {

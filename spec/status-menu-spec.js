@@ -29,6 +29,12 @@ describe("Linter status action menu", () => {
       "linter:clear",
     ]);
     expect(menu().find((item) => item.command === "linter-panel:file-mode").checked).toBe(true);
+    expect(menu().find((item) => item.command === "linter-panel:toggle").mouseBindingLabel).toBe(
+      "LMB",
+    );
+    expect(
+      menu().find((item) => item.command === "linter-panel:project-mode").mouseBindingLabel,
+    ).toBe("MMB");
     await lumine.commands.dispatch(tile, "linter-panel:project-mode");
     expect(menu().find((item) => item.command === "linter-panel:file-mode").checked).toBe(false);
     expect(menu().find((item) => item.command === "linter-panel:project-mode").checked).toBe(true);
