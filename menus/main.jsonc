@@ -9,7 +9,9 @@
           "submenu": [
             {
               "label": "Linter Panel",
-              "command": "linter-panel:toggle"
+              "command": "linter-panel:toggle",
+              "group": "panels",
+              "order": 10
             }
           ]
         }
