@@ -8,6 +8,7 @@ describe("Linter status action menu", () => {
     await lumine.packages.activatePackage("status-bar");
     const main = (await lumine.packages.activatePackage("linter-panel")).mainModule;
     editor = await lumine.workspace.open();
+    editor.getElement().focus();
     cursorEditor = editor;
     main.provideLinterUI().attach(fakeHub({ editor: () => cursorEditor }));
     tile = lumine.workspace.getElement().querySelector(".linter-status");
@@ -35,7 +36,7 @@ describe("Linter status action menu", () => {
     expect(menu().find((item) => item.command === "linter-panel:file-mode").checked).toBe(false);
     expect(menu().find((item) => item.command === "linter-panel:project-mode").checked).toBe(true);
   });
-  it("shows Alt-L only for focusing and editor-scoped navigation keys only with a cursor editor", () => {
+  it("shows Alt-L only for focusing and navigation shortcuts only while an editor has focus", () => {
     const keys = lumine.keymaps.add("linter-status-editor-shortcuts-spec", {
       "lumine-text-editor:not([mini])": {
         "alt-'": "linter:next",
@@ -76,7 +77,19 @@ describe("Linter status action menu", () => {
         .getActivePackage("linter-panel")
         .mainModule.provideLinterUI()
         .didChangeActiveItem();
-      expect(menu().find((item) => item.command === "linter:next").keyBindingLabel).toBe("");
+      expect(menu().find((item) => item.command === "linter:next").keyBindingLabel).toBe(
+        process.platform === "darwin" ? "⌥'" : "Alt+'",
+      );
+      const button = document.createElement("button");
+      lumine.workspace.getElement().appendChild(button);
+      try {
+        button.focus();
+        expect(
+          menu().find((item) => item.command === "linter:next").keyBindingLabel,
+        ).toBeUndefined();
+      } finally {
+        button.remove();
+      }
     } finally {
       keys.dispose();
     }
