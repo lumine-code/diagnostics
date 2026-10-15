@@ -23,10 +23,10 @@
         {
           "label": "Linter Panel",
           "submenu": [
-            { "label": "Toggle Panel", "command": "linter-panel:toggle" },
-            { "label": "Focus Panel", "command": "linter-panel:toggle-focus" },
-            { "label": "Show Active File", "command": "linter-panel:file-mode" },
-            { "label": "Show Whole Project", "command": "linter-panel:project-mode" }
+            { "label": "Toggle Linter Panel", "command": "linter-panel:toggle" },
+            { "label": "Toggle Linter Panel Focus", "command": "linter-panel:toggle-focus" },
+            { "label": "Show Active File Diagnostics", "command": "linter-panel:file-mode" },
+            { "label": "Show Project Diagnostics", "command": "linter-panel:project-mode" }
           ]
         }
       ]
