@@ -10,7 +10,7 @@ The front end for the [linter](https://github.com/lumine-code/linter) package. W
 
 - **Sortable panel**: a table of every message, sorted by severity, position or provider, with a filter per severity and a keyboard cursor once the panel has focus.
 - **File and project view**: show only the active item's messages, or everything the project holds.
-- **Status bar**: a count per severity, which switches view mode on a middle click and opens the panel on a left click.
+- **Status bar**: positive counts per severity and a neutral indicator when no messages are reported, which switches view mode on a middle click and opens the panel on a left click.
 - **Message detail**: each row carries the provider's long form beside the excerpt, such as a rule code, resolving a lazy one on demand and linking out to the provider's documentation.
 - **Notebook positions**: a message that names a cell is labelled and sorted by it, so a diagnostic in a notebook reads as `[cell]:line:col`.
 - **Windowed rendering**: only the rows the viewport can show are built, so a project with tens of thousands of messages costs what one screen costs.

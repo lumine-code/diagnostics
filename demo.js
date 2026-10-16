@@ -78,11 +78,13 @@ module.exports = {
           await lumine.workspace.open("lumine://linter-panel");
           lumine.workspace.getBottomDock().setState({ size: 160 });
           lumine.workspace.getBottomDock().show();
+          context.command("linter-panel:project-mode");
         }
       },
       ready() {
         return Boolean(
-          document.querySelector(".linter-panel")?.innerText.includes("not assignable"),
+          document.querySelector(".linter-panel")?.innerText.includes("not assignable") &&
+          document.querySelector(".linter-status-project:not([hidden])"),
         );
       },
     },

@@ -2,10 +2,8 @@ const { StatusPanel } = require("../lib/status");
 const { Front } = require("../lib/front");
 const { fakeHub, SEVERITIES } = require("./fake-hub");
 
-// The status band is built from the severity vocabulary the hub hands over, one
-// tile per severity. These specs pin the two ways the tiers are deliberately not
-// uniform: the quiet tier hides itself at zero, and it never keeps the band open
-// on its own.
+// Counters follow the hub's severity vocabulary. An empty snapshot keeps a
+// neutral panel control without claiming that a provider completed a check.
 describe("lib/status", () => {
   let status;
   let front;
@@ -15,13 +13,20 @@ describe("lib/status", () => {
   const message = (severity) => ({ severity, excerpt: severity, location: { file: "/a.js" } });
 
   const tileFor = (severity) => status.counters.find((tile) => tile.severity.name === severity);
+  const isHidden = (severity) =>
+    tileFor(severity).counter.classList.contains("linter-status-counter-hidden");
+  const visibleSeverities = () =>
+    status.counters
+      .filter(({ severity }) => !isHidden(severity.name))
+      .map(({ severity }) => severity.name);
+  const tooltipTitle = () => lumine.tooltips.findTooltips(status.element)[0].getTitle();
 
   beforeEach(() => {
     messages = [];
     lintingDisabled = false;
+    lumine.config.set("linter-panel.statusMode", true);
     front = new Front();
-    // Whether linting is disabled is a question about an editor, so the tile
-    // reads "X" only when there is one to ask about.
+    // Whether linting is disabled is a question about an editor's buffer.
     const editor = {};
     const hub = fakeHub({ messages: () => messages, editor: () => editor });
     hub.isLintingDisabled = () => lintingDisabled;
@@ -45,14 +50,28 @@ describe("lib/status", () => {
     expect(tileFor("hint").counter.querySelector(".icon").classList).toContain("icon-light-bulb");
   });
 
-  it("describes the state and primary action in plain prose", () => {
-    const [tooltip] = lumine.tooltips.findTooltips(status.element);
-    expect(tooltip.getTitle()).toBe("File diagnostics. Click to toggle the panel.");
+  it("describes the message count and primary action in the current scope", () => {
+    expect(status.projectIcon.hidden).toBe(true);
+    expect(tooltipTitle()).toBe("File diagnostics: no messages. Click to toggle the panel.");
+    messages = [message("warning")];
+    front.render({ messages });
+    expect(tooltipTitle()).toBe("File diagnostics: 1 message. Click to toggle the panel.");
+    messages = [message("warning"), message("hint")];
+    front.render({ messages });
+    expect(tooltipTitle()).toBe("File diagnostics: 2 messages. Click to toggle the panel.");
     front.setViewMode("project");
-    expect(tooltip.getTitle()).toBe("Project diagnostics. Click to toggle the panel.");
+    expect(status.projectIcon.hidden).toBe(false);
+    expect(status.projectIcon.classList).toContain("icon-file-directory");
+    expect(tooltipTitle()).toBe("Project diagnostics: 2 messages. Click to toggle the panel.");
+    messages = [];
+    front.render({ messages });
+    expect(tooltipTitle()).toBe("Project diagnostics: no messages. Click to toggle the panel.");
+    expect(status.projectIcon.hidden).toBe(false);
+    front.setViewMode("file");
+    expect(status.projectIcon.hidden).toBe(true);
   });
 
-  it("keeps a populated status-bar tile before an editor exists", () => {
+  it("keeps a neutral status-bar control before the hub or an editor exists", () => {
     const tile = { destroy: jasmine.createSpy("destroy") };
     const statusBar = {
       addLeftTile: jasmine.createSpy("addLeftTile").and.returnValue(tile),
@@ -68,6 +87,14 @@ describe("lib/status", () => {
       "info",
       "hint",
     ]);
+    for (const { counter, label } of noEditorStatus.counters) {
+      expect(counter.classList).toContain("linter-status-counter-hidden");
+      expect(label.textContent).toBe("0");
+    }
+    expect(noEditorStatus.stateIcon.hidden).toBe(false);
+    expect(noEditorStatus.stateIcon.classList).toContain("icon-checklist");
+    const [tooltip] = lumine.tooltips.findTooltips(noEditorStatus.element);
+    expect(tooltip.getTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
 
     noEditorStatus.setEditor({});
     noEditorStatus.setEditor(null);
@@ -85,6 +112,42 @@ describe("lib/status", () => {
     expect(tileFor("warning").label.textContent).toBe("1");
     expect(tileFor("info").label.textContent).toBe("0");
     expect(tileFor("hint").label.textContent).toBe("2");
+    expect(visibleSeverities()).toEqual(["error", "warning", "hint"]);
+    expect(status.stateIcon.hidden).toBe(true);
+  });
+
+  it("replaces all zero counters with one neutral icon and restores it after messages clear", () => {
+    expect(visibleSeverities()).toEqual([]);
+    expect(status.stateIcon.hidden).toBe(false);
+    expect(status.stateIcon.classList).toContain("icon-checklist");
+
+    messages = [message("info")];
+    front.render({ messages });
+    expect(visibleSeverities()).toEqual(["info"]);
+    expect(status.stateIcon.hidden).toBe(true);
+
+    messages = [];
+    front.render({ messages });
+    expect(visibleSeverities()).toEqual([]);
+    expect(status.stateIcon.hidden).toBe(false);
+    expect(status.stateIcon.classList).toContain("icon-checklist");
+  });
+
+  it("returns to an unavailable neutral state when the hub detaches and restores on attach", () => {
+    messages = [message("warning")];
+    front.render({ messages });
+    const hub = front.hub;
+
+    front.detach();
+    expect(visibleSeverities()).toEqual([]);
+    expect(status.stateIcon.hidden).toBe(false);
+    expect(status.stateIcon.classList).toContain("icon-checklist");
+    expect(tooltipTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
+
+    front.attach(hub);
+    expect(visibleSeverities()).toEqual(["warning"]);
+    expect(status.stateIcon.hidden).toBe(true);
+    expect(tooltipTitle()).toBe("File diagnostics: 1 message. Click to toggle the panel.");
   });
 
   it("ignores a severity outside the model rather than miscounting it", () => {
@@ -231,44 +294,94 @@ describe("lib/status", () => {
     expect(tileFor("warning").label.textContent).toBe("0");
   });
 
-  describe("the quiet tier", () => {
-    const isHidden = (severity) =>
-      tileFor(severity).counter.classList.contains("linter-status-counter-hidden");
-
-    it("hides its tile at zero and shows it as soon as one arrives", () => {
-      status.update();
-      expect(isHidden("hint")).toBe(true);
-      messages = [message("hint")];
-      status.update();
-      expect(isHidden("hint")).toBe(false);
-    });
-
-    it("leaves the loud tiles visible at zero", () => {
-      status.update();
-      expect(isHidden("error")).toBe(false);
-      expect(isHidden("warning")).toBe(false);
-      expect(isHidden("info")).toBe(false);
-    });
-
-    // Disabled linting reads as three X, exactly as it did before hint existed.
-    it("stays hidden while linting is disabled and nothing was reported", () => {
+  describe("disabled file linting", () => {
+    it("shows one disabled icon with no zero counters or X labels", () => {
       lintingDisabled = true;
       status.update();
-      expect(isHidden("hint")).toBe(true);
-      expect(tileFor("error").label.textContent).toBe("X");
+      expect(visibleSeverities()).toEqual([]);
+      for (const { label } of status.counters) expect(label.textContent).toBe("0");
+      expect(status.stateIcon.hidden).toBe(false);
+      expect(status.stateIcon.classList).toContain("icon-circle-slash");
+      expect(status.stateIcon.classList).not.toContain("icon-checklist");
+      expect(status.element.classList).toContain("linting-disabled");
+      expect(tooltipTitle()).toBe(
+        "File diagnostics: linting disabled for this file. Click to toggle the panel.",
+      );
     });
 
-    // A file whose only diagnostics are hints is still clean, which is what
-    // turning statusMode off asks the band to respect.
-    it("does not keep the band open on its own", () => {
-      lumine.config.set("linter-panel.statusMode", false);
-      messages = [message("hint")];
+    it("keeps nonzero counts muted beside the disabled icon and restores them when enabled", () => {
+      messages = [message("error"), message("hint")];
+      front.render({ messages });
+      lintingDisabled = true;
       status.update();
-      expect(status.element.classList).toContain("linter-status-hidden");
 
-      messages = [message("hint"), message("info")];
+      expect(visibleSeverities()).toEqual(["error", "hint"]);
+      expect(tileFor("error").label.textContent).toBe("1");
+      expect(tileFor("hint").label.textContent).toBe("1");
+      for (const { severity, counter } of status.counters) {
+        expect(counter.classList).not.toContain(severity.textClass);
+      }
+      expect(status.stateIcon.hidden).toBe(false);
+      expect(status.stateIcon.classList).toContain("icon-circle-slash");
+
+      lintingDisabled = false;
+      status.update();
+      expect(status.stateIcon.hidden).toBe(true);
+      expect(status.stateIcon.classList).not.toContain("icon-circle-slash");
+      expect(status.element.classList).not.toContain("linting-disabled");
+      expect(tileFor("error").counter.classList).toContain("text-error");
+      expect(tileFor("hint").counter.classList).toContain("text-hint");
+    });
+
+    it("keeps project counts and color independent of disabled linting in the active file", () => {
+      messages = [message("error"), message("warning")];
+      front.render({ messages });
+      lintingDisabled = true;
+      front.setViewMode("project");
+
+      expect(visibleSeverities()).toEqual(["error", "warning"]);
+      expect(status.element.classList).not.toContain("linting-disabled");
+      expect(status.stateIcon.hidden).toBe(true);
+      expect(tileFor("error").counter.classList).toContain("text-error");
+      expect(tileFor("warning").counter.classList).toContain("text-warning");
+      expect(tooltipTitle()).toBe("Project diagnostics: 2 messages. Click to toggle the panel.");
+
+      messages = [];
+      front.render({ messages });
+      expect(status.stateIcon.hidden).toBe(false);
+      expect(status.stateIcon.classList).toContain("icon-checklist");
+      expect(status.stateIcon.classList).not.toContain("icon-circle-slash");
+      expect(tooltipTitle()).toBe("Project diagnostics: no messages. Click to toggle the panel.");
+    });
+  });
+
+  describe("optional visibility", () => {
+    beforeEach(() => {
+      lumine.config.set("linter-panel.statusMode", false);
+    });
+
+    it("hides an empty enabled state and stays visible for hint-only messages", () => {
+      expect(status.element.classList).toContain("linter-status-hidden");
+      messages = [message("hint")];
+      front.render({ messages });
+      expect(status.element.classList).not.toContain("linter-status-hidden");
+      expect(visibleSeverities()).toEqual(["hint"]);
+      expect(status.stateIcon.hidden).toBe(true);
+
+      messages = [];
+      front.render({ messages });
+      expect(status.element.classList).toContain("linter-status-hidden");
+    });
+
+    it("keeps disabled file linting visible but does not disable an empty project", () => {
+      lintingDisabled = true;
       status.update();
       expect(status.element.classList).not.toContain("linter-status-hidden");
+      expect(status.stateIcon.classList).toContain("icon-circle-slash");
+
+      front.setViewMode("project");
+      expect(status.element.classList).toContain("linter-status-hidden");
+      expect(status.element.classList).not.toContain("linting-disabled");
     });
   });
 });

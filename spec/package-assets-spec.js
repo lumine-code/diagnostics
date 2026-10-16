@@ -72,8 +72,7 @@ describe("linter-panel package assets", () => {
   it("carries the panel and the status tile, and none of the hub's decorations", () => {
     const css = read("styles/main.css");
     expect(css).toContain(".linter-panel {");
-    expect(css).toMatch(/\.linter-status\s*\{[^}]*border-left:\s*2px solid transparent;/);
-    expect(css).toMatch(/&\.project-mode\s*\{[^}]*border-color:\s*var\(--text-color-highlight\);/);
+    expect(css).toContain(".linter-status {");
     // Underlines, gutter dots and the hover surface stayed with the hub.
     expect(css).not.toContain(".linter-text");
     expect(css).not.toContain(".linter-line-number");

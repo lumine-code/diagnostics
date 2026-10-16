@@ -7,16 +7,9 @@
  */
 
 .linter-status {
-  /* Keep the project-mode indicator's space reserved without trying to hide
-   * it by matching a surface colour. Status-bar tiles may be translucent, so
-   * a theme can legitimately paint a different colour underneath. */
-  border-left: 2px solid transparent;
-  padding-left: 0.4em;
-  transition: border-color 0.2s ease;
-
-  &.project-mode {
-    border-color: var(--text-color-highlight);
-  }
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5em;
 
   &.linting-disabled {
     color: var(--text-color-subtle);
@@ -26,9 +19,6 @@
     display: none;
   }
 
-  .linter-status-counter + .linter-status-counter {
-    margin-left: 0.5em;
-  }
   .linter-status-counter {
     &.text-error {
       color: var(--text-color-error);
@@ -43,14 +33,22 @@
       color: var(--text-color-hint);
     }
   }
-  /* A quiet tile only appears once it has something to report. Safe against the
-   * a + a margin above because the quiet tiers rank last. */
-  .linter-status-counter.linter-status-counter-hidden {
+  .linter-status-counter.linter-status-counter-hidden,
+  .linter-status-state[hidden],
+  .linter-status-project[hidden] {
     display: none;
   }
   .icon::before {
     margin-right: 0.25em;
     width: auto;
+  }
+  .linter-status-state,
+  .linter-status-project {
+    color: var(--text-color-subtle);
+
+    &::before {
+      margin-right: 0;
+    }
   }
 }
 
@@ -252,6 +250,10 @@
       .linter-file-line {
         color: var(--text-color);
         white-space: nowrap;
+      }
+
+      .linter-file-path + .linter-file-line {
+        margin-left: 0.5em;
       }
 
       .linter-log-ref {
