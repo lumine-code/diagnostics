@@ -450,3 +450,20 @@
     }
   }
 }
+
+/* Respect reduced motion while retaining visible status indicators. */
+@media (prefers-reduced-motion: reduce) {
+  .linter-panel
+    .linter-table
+    :is(
+      .linter-header-sortable,
+      .linter-row,
+      .linter-position .linter-log-ref,
+      .linter-description .linter-detail-toggle,
+      .linter-description .linter-more-info,
+      .linter-toggles .linter-view-tab,
+      .linter-toggles .input-label
+    ) {
+    transition: none;
+  }
+}
