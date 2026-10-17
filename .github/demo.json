@@ -2,12 +2,12 @@
   "title": "linter-panel",
   "description": "Inspect a TypeScript error in the diagnostics panel and its source code.",
   "recordedOn": "2026-10-16",
-  "sourceRevision": "8429c011240fa648cd88a3911cdaead2dc16b381",
+  "sourceRevision": "db833e64de7e6eb4faa544d2101f6e14d6c84349",
   "themeSourceRevision": "828c35ac1816466699effa6f7cf7eedccc930ff9",
   "mode": "normal",
   "fontSettings": "default",
   "scenario": "demo.js",
-  "recipeHash": "d8f29cfafa9c2403cd3bae9eb8757f93c98f9caa3e8f0dd24fa9226414bef5b9",
+  "recipeHash": "a12fc550daeb3f94496643b2ff2167aece2fbe95ea1ae812376cb9ee51f658c3",
   "environment": {
     "platform": "win32",
     "arch": "x64",
@@ -24,22 +24,22 @@
   "privacy": { "version": 1, "location": "neutral", "textChecked": true },
   "sources": {
     "editor": {
-      "revision": "f8d8badf72a1a2e010c2c5d76306bade6c5fefd0",
-      "dirty": true,
-      "workingTreeHash": "d1c15955f1f03f401765eb02eb0abd9b8dda9a329676160b0785bd5e662f2b0c"
+      "revision": "efcb512cb6d8a4450bc47866eab58f28a54722f9",
+      "dirty": false,
+      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "package": {
-      "revision": "8429c011240fa648cd88a3911cdaead2dc16b381",
+      "revision": "db833e64de7e6eb4faa544d2101f6e14d6c84349",
       "dirty": true,
-      "workingTreeHash": "9f7b8364575ad63ccb6b9c8f6f9ebd61bea9b06dfe82a7d29e8053b483921d03"
+      "workingTreeHash": "dff378c735197d9a8f2a85ed90337b3a7facb91d18f6cbb6e3f6baa454b0df6c"
     },
     "linter-panel": {
-      "revision": "8429c011240fa648cd88a3911cdaead2dc16b381",
+      "revision": "db833e64de7e6eb4faa544d2101f6e14d6c84349",
       "dirty": true,
-      "workingTreeHash": "9f7b8364575ad63ccb6b9c8f6f9ebd61bea9b06dfe82a7d29e8053b483921d03"
+      "workingTreeHash": "dff378c735197d9a8f2a85ed90337b3a7facb91d18f6cbb6e3f6baa454b0df6c"
     },
     "documentation-view": {
-      "revision": "b04af69348edf68883d2da1420261c151a62ebd6",
+      "revision": "6e5f6fe1e973987dc616b29fceb10710912d5097",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
@@ -49,12 +49,12 @@
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "ide": {
-      "revision": "c62b9df8c125b01c2efc8c646c1cd5efc6e2bc94",
+      "revision": "d8dcaa8b14347fc127044d7b989182dd7d5391c2",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "ide-typescript": {
-      "revision": "ce5b8ac98054f95473677a7e4202ae0f78d28cf5",
+      "revision": "ff92384775b31c6ca6ccaa1d73d18a15229cac99",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
@@ -64,7 +64,7 @@
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "linter": {
-      "revision": "0c9759af5fb1c16c1dd1de37b80c576aed821bc0",
+      "revision": "c48ce8a1fa316fd7838d3b4482352ff77527a98d",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
@@ -91,7 +91,7 @@
       "label": "Inspect a TypeScript error in the diagnostics panel and its source code.",
       "width": 1100,
       "height": 490,
-      "sha256": "97e9f08673cf8893612331819cdd99f0c7a1ab704919a63400ee165e43c6cfda"
+      "sha256": "fc66038d5a3a1cca9f2bf5ef9fd19b7629c56014e55516a66896c8ff55b3d97e"
     }
   ]
 }

@@ -93,6 +93,7 @@ describe("lib/status", () => {
     }
     expect(noEditorStatus.stateIcon.hidden).toBe(false);
     expect(noEditorStatus.stateIcon.classList).toContain("icon-checklist");
+    expect(noEditorStatus.element.classList).toContain("linter-status-unavailable");
     const [tooltip] = lumine.tooltips.findTooltips(noEditorStatus.element);
     expect(tooltip.getTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
 
@@ -117,6 +118,7 @@ describe("lib/status", () => {
   });
 
   it("replaces all zero counters with one neutral icon and restores it after messages clear", () => {
+    expect(status.element.classList).not.toContain("linter-status-unavailable");
     expect(visibleSeverities()).toEqual([]);
     expect(status.stateIcon.hidden).toBe(false);
     expect(status.stateIcon.classList).toContain("icon-checklist");
@@ -139,12 +141,14 @@ describe("lib/status", () => {
     const hub = front.hub;
 
     front.detach();
+    expect(status.element.classList).toContain("linter-status-unavailable");
     expect(visibleSeverities()).toEqual([]);
     expect(status.stateIcon.hidden).toBe(false);
     expect(status.stateIcon.classList).toContain("icon-checklist");
     expect(tooltipTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
 
     front.attach(hub);
+    expect(status.element.classList).not.toContain("linter-status-unavailable");
     expect(visibleSeverities()).toEqual(["warning"]);
     expect(status.stateIcon.hidden).toBe(true);
     expect(tooltipTitle()).toBe("File diagnostics: 1 message. Click to toggle the panel.");
@@ -304,12 +308,13 @@ describe("lib/status", () => {
       expect(status.stateIcon.classList).toContain("icon-circle-slash");
       expect(status.stateIcon.classList).not.toContain("icon-checklist");
       expect(status.element.classList).toContain("linting-disabled");
+      expect(status.element.classList).not.toContain("linter-status-unavailable");
       expect(tooltipTitle()).toBe(
         "File diagnostics: linting disabled for this file. Click to toggle the panel.",
       );
     });
 
-    it("keeps nonzero counts muted beside the disabled icon and restores them when enabled", () => {
+    it("keeps severity colors beside the disabled file icon", () => {
       messages = [message("error"), message("hint")];
       front.render({ messages });
       lintingDisabled = true;
@@ -318,9 +323,8 @@ describe("lib/status", () => {
       expect(visibleSeverities()).toEqual(["error", "hint"]);
       expect(tileFor("error").label.textContent).toBe("1");
       expect(tileFor("hint").label.textContent).toBe("1");
-      for (const { severity, counter } of status.counters) {
-        expect(counter.classList).not.toContain(severity.textClass);
-      }
+      expect(tileFor("error").counter.classList).toContain("text-error");
+      expect(tileFor("hint").counter.classList).toContain("text-hint");
       expect(status.stateIcon.hidden).toBe(false);
       expect(status.stateIcon.classList).toContain("icon-circle-slash");
 

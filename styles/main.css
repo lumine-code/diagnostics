@@ -11,7 +11,7 @@
   align-items: center;
   gap: 0.5em;
 
-  &.linting-disabled {
+  &.linter-status-unavailable {
     color: var(--text-color-subtle);
   }
 
@@ -44,8 +44,6 @@
   }
   .linter-status-state,
   .linter-status-project {
-    color: var(--text-color-subtle);
-
     &::before {
       margin-right: 0;
     }
@@ -183,6 +181,42 @@
         &.active {
           color: var(--text-color-highlight);
           font-weight: bold;
+        }
+      }
+
+      .linter-navigation,
+      .linter-clear {
+        font: inherit;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex: 0 0 auto;
+        width: 2em;
+        padding: 0;
+        border: 0;
+        border-left: 1px solid var(--base-border-color);
+        border-radius: 0;
+        background: transparent;
+        color: var(--text-color);
+        cursor: default;
+
+        &::before {
+          margin: 0;
+          width: auto;
+        }
+
+        &:hover:not(:disabled) {
+          background-color: rgb(from var(--text-color-highlight) r g b / 0.1);
+        }
+
+        &:focus-visible {
+          outline: 1px solid var(--text-color-highlight);
+          outline-offset: -2px;
+        }
+
+        &:disabled {
+          color: var(--text-color-subtle);
+          opacity: 0.5;
         }
       }
 

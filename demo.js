@@ -84,7 +84,10 @@ module.exports = {
       ready() {
         return Boolean(
           document.querySelector(".linter-panel")?.innerText.includes("not assignable") &&
-          document.querySelector(".linter-status-project:not([hidden])"),
+          document.querySelector(".linter-status-project:not([hidden])") &&
+          document.querySelector(".linter-navigation.icon-arrow-left:not(:disabled)") &&
+          document.querySelector(".linter-navigation.icon-arrow-right:not(:disabled)") &&
+          document.querySelector(".linter-clear:not(:disabled)"),
         );
       },
     },

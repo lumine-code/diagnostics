@@ -52,6 +52,11 @@ class LinterPanel {
     // Rendered as a class from state — never patched into the DOM
     // behind etch's back.
     this._focusedMessage = null;
+    // Header navigation keeps its place after revealing a message moves focus
+    // to the editor, including when several diagnostics share one position.
+    this._navigationMessage = null;
+    this._navigating = false;
+    this.destroyed = false;
     // Bind row click handler once for event delegation
     this._onRowClick = this._onRowClick.bind(this);
     this._onRowMiddleClick = this._onRowMiddleClick.bind(this);
@@ -155,6 +160,7 @@ class LinterPanel {
    * status-bar tile renders it too.
    */
   viewModeChanged() {
+    this._navigationMessage = null;
     // Clear .current highlight BEFORE state reset (etch won't touch it)
     const currentRow = this.element?.querySelector(".linter-row.current");
     if (currentRow) {
@@ -226,6 +232,7 @@ class LinterPanel {
       return;
     }
 
+    this._navigationMessage = null;
     if (this.pkg.viewMode === "project") {
       this._openMessage(message);
     } else {
@@ -249,6 +256,7 @@ class LinterPanel {
   }
 
   setEditor(editor) {
+    if (editor !== this.editor && !this._navigating) this._navigationMessage = null;
     this.editor = editor;
     // Clear .current highlight BEFORE re-render (etch won't touch it if virtual DOM unchanged)
     const currentRow = this.element?.querySelector(".linter-row.current");
@@ -284,6 +292,10 @@ class LinterPanel {
       this._visibleMessages();
       for (const message of candidates) {
         const index = this._visibleCache.messageIndices.get(message);
+        if (index !== undefined && message === this._navigationMessage) {
+          newRowIndex = index;
+          break;
+        }
         if (index !== undefined && (newRowIndex < 0 || index < newRowIndex)) newRowIndex = index;
       }
     } else {
@@ -296,8 +308,8 @@ class LinterPanel {
         if (current && !current.has(message)) continue;
         const range = message.location.displayRange || message.location.position;
         if (range.containsPoint(curpos)) {
-          newRowIndex = index;
-          break;
+          if (newRowIndex < 0 || message === this._navigationMessage) newRowIndex = index;
+          if (!this._navigationMessage || message === this._navigationMessage) break;
         }
       }
     }
@@ -435,6 +447,7 @@ class LinterPanel {
   }
 
   destroy() {
+    this.destroyed = true;
     if (this.cwatch) {
       this.cwatch.dispose();
       this.cwatch = null;
@@ -505,6 +518,9 @@ class LinterPanel {
 
   render() {
     const isProject = this.pkg.viewMode === "project";
+    // Keep sorting lazy while the dock is hidden, including for button state.
+    const visible = this._isOnScreen() ? this._visibleMessages() : [];
+    const navigationDisabled = visible.length === 0 || this._navigating;
 
     const severityClass =
       this.sortMethod === "severity"
@@ -550,6 +566,30 @@ class LinterPanel {
             >
               Project
             </span>
+            <button
+              type="button"
+              class="linter-navigation native-key-bindings icon icon-arrow-left"
+              title="Previous Diagnostic"
+              attributes={{ "aria-label": "Previous Diagnostic" }}
+              disabled={navigationDisabled}
+              on={{ click: () => this._navigateMessage(-1) }}
+            />
+            <button
+              type="button"
+              class="linter-navigation native-key-bindings icon icon-arrow-right"
+              title="Next Diagnostic"
+              attributes={{ "aria-label": "Next Diagnostic" }}
+              disabled={navigationDisabled}
+              on={{ click: () => this._navigateMessage(1) }}
+            />
+            <button
+              type="button"
+              class="linter-clear native-key-bindings icon icon-x"
+              title="Clear All Diagnostics"
+              attributes={{ "aria-label": "Clear All Diagnostics" }}
+              disabled={!this.pkg.hub || this.pkg.messages.length === 0 || this._navigating}
+              on={{ click: () => this._clearMessages() }}
+            />
             {this.pkg.severities.records.map((severity) => (
               <label
                 class={`input-label ${severity.name}`}
@@ -571,7 +611,6 @@ class LinterPanel {
     const data = [];
     // Sorting and filtering are only worth their O(n log n) when a row can come
     // of them; an off-screen panel renders an empty tbody.
-    const visible = this._isOnScreen() ? this._visibleMessages() : [];
     const { start, end } = this._visibleWindow(visible.length);
     this._window = { start, end };
 
@@ -770,11 +809,11 @@ class LinterPanel {
     if (this.editor) {
       // Use CSS-only highlight update instead of full re-render
       // This is much faster as it only updates 2 DOM elements instead of entire table
-      this.cwatch = this.editor.onDidChangeCursorPosition(
-        throttle(() => {
-          this._updateCurrentRowHighlight();
-        }, 100),
-      );
+      const updateHighlight = throttle(() => this._updateCurrentRowHighlight(), 100);
+      this.cwatch = this.editor.onDidChangeCursorPosition(() => {
+        if (!this._navigating) this._navigationMessage = null;
+        updateHighlight();
+      });
     }
   }
 
@@ -820,6 +859,7 @@ class LinterPanel {
     const indices = [];
     const messageIndices = new Map();
     let focusedReplacement = null;
+    let navigationReplacement = null;
     for (let i = 0; i < sorted.length; i++) {
       const message = sorted[i];
       if (!this.isSeverityVisible(message.severity)) continue;
@@ -831,12 +871,22 @@ class LinterPanel {
       ) {
         focusedReplacement = message;
       }
+      if (
+        !navigationReplacement &&
+        this._navigationMessage?.key != null &&
+        message.key === this._navigationMessage.key
+      ) {
+        navigationReplacement = message;
+      }
       messages.push(message);
       indices.push(i);
     }
 
     if (this._focusedMessage && !messageIndices.has(this._focusedMessage)) {
       this._focusedMessage = focusedReplacement;
+    }
+    if (this._navigationMessage && !messageIndices.has(this._navigationMessage)) {
+      this._navigationMessage = navigationReplacement;
     }
     this._visibleCache = {
       sorted,
@@ -994,11 +1044,59 @@ class LinterPanel {
     this._moveFocus(-1);
   }
 
+  async _navigateMessage(delta) {
+    if (this.destroyed || this._navigating) return;
+    const visible = this._visibleMessages();
+    if (!visible.length) return;
+    if (!this._focusedMessage && !this._navigationMessage) this._updateCurrentRowHighlight();
+    const anchor = this._focusedMessage ?? this._navigationMessage ?? this._currentMessage();
+    const current = this._visibleCache.messageIndices.get(anchor) ?? -1;
+    const index =
+      current < 0
+        ? delta > 0
+          ? 0
+          : visible.length - 1
+        : (current + delta + visible.length) % visible.length;
+    const message = visible[index];
+    const viewMode = this.pkg.viewMode;
+    const editor = this.editor;
+    this._navigationMessage = message;
+    this._focusedMessage = null;
+    this._navigating = true;
+    try {
+      await this.update();
+      if (
+        this.destroyed ||
+        this.pkg.viewMode !== viewMode ||
+        (viewMode === "file" && this.editor !== editor)
+      )
+        return;
+      this._visibleMessages();
+      const target = this._navigationMessage;
+      const targetIndex = this._visibleCache.messageIndices.get(target);
+      if (targetIndex === undefined) return;
+      this._scrollIndexIntoView(targetIndex);
+      if (viewMode === "project") {
+        return await this._openMessage(target);
+      }
+      return await this.pkg.revealMessage(target);
+    } finally {
+      this._navigating = false;
+      if (!this.destroyed) await this.update();
+    }
+  }
+
+  _clearMessages() {
+    if (this.destroyed || this._navigating || !this.pkg.hub || !this.pkg.messages.length) return;
+    return lumine.commands.dispatch(this.element, "linter:clear");
+  }
+
   // Enter needs a cursor, jumps to its message, and takes the cursor with it.
   _confirmFocused() {
     this._visibleMessages();
     const message = this._focusedMessage;
     if (!message) return;
+    this._navigationMessage = null;
     this._setFocusedMessage(null);
     if (this.pkg.viewMode === "project") {
       return this._openMessage(message);
