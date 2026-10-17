@@ -7,7 +7,8 @@
     "lib",
     "menus",
     "spec",
-    "styles"
+    "styles",
+    "THIRD_PARTY_NOTICES"
   ],
   "version": "1.0.0",
   "description": "Show lint messages in a sortable panel and on the status bar.",
