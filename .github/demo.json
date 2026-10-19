@@ -1,17 +1,17 @@
 {
   "title": "diagnostics",
   "description": "Inspect a TypeScript error in the diagnostics panel and its source code.",
-  "recordedOn": "2026-10-17",
-  "sourceRevision": "eb4cd44839ae8d6fe5832bcbe02705bf64a94de0",
-  "themeSourceRevision": "cc43d68c8f1d44cd089848302ab58b657eee4a18",
+  "recordedOn": "2026-10-19",
+  "sourceRevision": "fe9dc55ce824699f1e79b31817c9c3c6f73ac22d",
+  "themeSourceRevision": "1b8b1b57c87794d068b48e938fd81c9740a2e39d",
   "mode": "normal",
   "fontSettings": "default",
   "scenario": "demo.js",
-  "recipeHash": "a12fc550daeb3f94496643b2ff2167aece2fbe95ea1ae812376cb9ee51f658c3",
+  "recipeHash": "ce880e07b524b55d2249b985631457de7fd30714d8ad6abdf87fbcbb7072e125",
   "environment": {
     "platform": "win32",
     "arch": "x64",
-    "electron": "44.8.0",
+    "electron": "44.9.0",
     "chrome": "152.0.7977.167",
     "devicePixelRatio": 1,
     "locale": "en-GB",
@@ -24,57 +24,57 @@
   "privacy": { "version": 1, "location": "neutral", "textChecked": true },
   "sources": {
     "editor": {
-      "revision": "2d4cf4ca9852ee18fb7f3e05182a0c2a3822e83d",
-      "dirty": false,
-      "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
+      "revision": "e13c8d8e990363ad18820418e75b5a757060f208",
+      "dirty": true,
+      "workingTreeHash": "61ba467f6153c3defb23b8b93f7ada5d86185b4390e9c87ed9965b45b73a53cd"
     },
     "package": {
-      "revision": "eb4cd44839ae8d6fe5832bcbe02705bf64a94de0",
+      "revision": "fe9dc55ce824699f1e79b31817c9c3c6f73ac22d",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "diagnostics": {
-      "revision": "eb4cd44839ae8d6fe5832bcbe02705bf64a94de0",
+      "revision": "fe9dc55ce824699f1e79b31817c9c3c6f73ac22d",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "documentation-view": {
-      "revision": "b3cd21aa39d0385c4c045d0ea7f7cea38ed3bd4d",
+      "revision": "928ae53783de62e99fde31865ab58d8490ee125f",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "hover": {
-      "revision": "ebffd6e9b8580bff5337e08dc0279f24ea9b7bd9",
+      "revision": "0291ddf14a97be21e075a26ddc7805a0cf29606e",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "ide": {
-      "revision": "b305df1d2af026cba795700e29e284b90959a968",
+      "revision": "2890166b870085d53253781d2008496cceb0afe3",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "ide-typescript": {
-      "revision": "ff92384775b31c6ca6ccaa1d73d18a15229cac99",
+      "revision": "81a3fe1642503c108709609c0e9728893adcf9db",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "language-typescript": {
-      "revision": "a9f16aff94a140dc00342375d43e49d413a4715a",
+      "revision": "e067dc6e5dd0f63223c9792a87e63f7a86153472",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "linter": {
-      "revision": "73355d0a8caaebe43904fdb1dbf0dd03f02a2994",
+      "revision": "a1f0d53bde00c7c3ba9362101f46658f0edc2eab",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "marker": {
-      "revision": "56b7b100f9b8b1e532645399f14fe662795d0861",
+      "revision": "f0454640a350f9ab24d7cbc77ccc656621466ffb",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
     "one-theme": {
-      "revision": "cc43d68c8f1d44cd089848302ab58b657eee4a18",
+      "revision": "1b8b1b57c87794d068b48e938fd81c9740a2e39d",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     }
@@ -91,7 +91,7 @@
       "label": "Inspect a TypeScript error in the diagnostics panel and its source code.",
       "width": 1100,
       "height": 490,
-      "sha256": "8d07913879d8fcef22c1d3a01442304038cab834b4460d3426d0f1ac771d3964"
+      "sha256": "62b686318103faca2efbe060538dbce373c75e1521cda82399c43c42f1baa2a1"
     }
   ]
 }
