@@ -75,19 +75,19 @@ module.exports = {
           lumine.views.getView(state.editor).focus();
         }
         {
-          await lumine.workspace.open("lumine://linter-panel");
+          await lumine.workspace.open("lumine://diagnostics");
           lumine.workspace.getBottomDock().setState({ size: 160 });
           lumine.workspace.getBottomDock().show();
-          context.command("linter-panel:project-mode");
+          context.command("diagnostics:project-mode");
         }
       },
       ready() {
         return Boolean(
-          document.querySelector(".linter-panel")?.innerText.includes("not assignable") &&
-          document.querySelector(".linter-status-project:not([hidden])") &&
-          document.querySelector(".linter-navigation.icon-arrow-left:not(:disabled)") &&
-          document.querySelector(".linter-navigation.icon-arrow-right:not(:disabled)") &&
-          document.querySelector(".linter-clear:not(:disabled)"),
+          document.querySelector(".diagnostics")?.innerText.includes("not assignable") &&
+          document.querySelector(".diagnostics-status-project:not([hidden])") &&
+          document.querySelector(".diagnostics-navigation.icon-arrow-left:not(:disabled)") &&
+          document.querySelector(".diagnostics-navigation.icon-arrow-right:not(:disabled)") &&
+          document.querySelector(".diagnostics-clear:not(:disabled)"),
         );
       },
     },

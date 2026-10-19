@@ -92,7 +92,7 @@ module.exports = [
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "commonjs",
-      // linter-panel.jsx authors its view in JSX.
+      // diagnostics.jsx authors its view in JSX.
       parserOptions: { ecmaFeatures: { jsx: true } },
       globals: {
         ...globals.browser,

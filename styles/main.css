@@ -6,20 +6,20 @@
  * the contrast() helper becomes core's --text-color-on-* variables.
  */
 
-.linter-status {
+.diagnostics-status {
   display: inline-flex;
   align-items: center;
   gap: 0.5em;
 
-  &.linter-status-unavailable {
+  &.diagnostics-status-unavailable {
     color: var(--text-color-subtle);
   }
 
-  &.linter-status-hidden {
+  &.diagnostics-status-hidden {
     display: none;
   }
 
-  .linter-status-counter {
+  .diagnostics-status-counter {
     &.text-error {
       color: var(--text-color-error);
     }
@@ -33,24 +33,24 @@
       color: var(--text-color-hint);
     }
   }
-  .linter-status-counter.linter-status-counter-hidden,
-  .linter-status-state[hidden],
-  .linter-status-project[hidden] {
+  .diagnostics-status-counter.diagnostics-status-counter-hidden,
+  .diagnostics-status-state[hidden],
+  .diagnostics-status-project[hidden] {
     display: none;
   }
   .icon::before {
     margin-right: 0.25em;
     width: auto;
   }
-  .linter-status-state,
-  .linter-status-project {
+  .diagnostics-status-state,
+  .diagnostics-status-project {
     &::before {
       margin-right: 0;
     }
   }
 }
 
-.linter-panel {
+.diagnostics {
   overflow: hidden;
   cursor: default;
   user-select: none;
@@ -61,9 +61,9 @@
 
   /* One line of text plus the cell padding below. The panel reads this back to
    * decide which rows to render, so it has to resolve to a pixel length. */
-  --linter-row-height: 2.1em;
+  --diagnostics-row-height: 2.1em;
 
-  .linter-table {
+  .diagnostics-table {
     width: 100%;
     height: 100%;
     display: flex;
@@ -88,7 +88,7 @@
     }
 
     > thead > tr,
-    > tbody > .linter-row {
+    > tbody > .diagnostics-row {
       display: grid;
       grid-template-columns: 8% 12% 18% minmax(0, 1fr);
       width: 100%;
@@ -120,7 +120,7 @@
       padding: 0;
     }
 
-    .linter-header-title {
+    .diagnostics-header-title {
       padding: 0.3em 0.5em;
       display: flex;
       align-items: center;
@@ -134,7 +134,7 @@
       text-overflow: ellipsis;
     }
 
-    .linter-header-sortable {
+    .diagnostics-header-sortable {
       white-space: nowrap;
       user-select: none;
       transition: background-color 0.2s ease;
@@ -143,7 +143,7 @@
         background-color: rgb(from var(--text-color-highlight) r g b / 0.1);
       }
 
-      &.linter-header-active {
+      &.diagnostics-header-active {
         font-weight: bold;
         background-color: rgb(from var(--text-color-highlight) r g b / 0.15);
       }
@@ -152,16 +152,16 @@
     /* Core defines .text-error, .text-warning and .text-info as utility
      * classes, but has no .text-hint: hint is a linter concept, so the rule
      * lives here rather than widening the editor's utility set. */
-    .linter-severity.text-hint {
+    .diagnostics-severity.text-hint {
       color: var(--text-color-hint);
     }
 
-    .linter-toggles {
+    .diagnostics-toggles {
       display: flex;
       align-items: stretch;
       flex: 0 0 auto;
 
-      .linter-view-tab {
+      .diagnostics-view-tab {
         display: flex;
         align-items: center;
         padding: 0 0.5em;
@@ -184,8 +184,8 @@
         }
       }
 
-      .linter-navigation,
-      .linter-clear {
+      .diagnostics-navigation,
+      .diagnostics-clear {
         font: inherit;
         display: flex;
         align-items: center;
@@ -223,7 +223,7 @@
       .input-label {
         /* One tint rule set, keyed off the severity's own colour, so a new
          * severity is a single line rather than another twelve-line block. */
-        --linter-severity-color: var(--text-color-subtle);
+        --diagnostics-severity-color: var(--text-color-subtle);
         display: flex;
         align-items: center;
         justify-content: center;
@@ -240,37 +240,37 @@
         }
 
         &.error {
-          --linter-severity-color: var(--text-color-error);
+          --diagnostics-severity-color: var(--text-color-error);
         }
         &.warning {
-          --linter-severity-color: var(--text-color-warning);
+          --diagnostics-severity-color: var(--text-color-warning);
         }
         &.info {
-          --linter-severity-color: var(--text-color-info);
+          --diagnostics-severity-color: var(--text-color-info);
         }
         &.hint {
-          --linter-severity-color: var(--text-color-hint);
+          --diagnostics-severity-color: var(--text-color-hint);
         }
 
         &:hover {
-          background-color: rgb(from var(--linter-severity-color) r g b / 0.1);
+          background-color: rgb(from var(--diagnostics-severity-color) r g b / 0.1);
         }
         &:has(input:checked) {
-          background-color: rgb(from var(--linter-severity-color) r g b / 0.2);
+          background-color: rgb(from var(--diagnostics-severity-color) r g b / 0.2);
           font-weight: bold;
         }
         &:has(input:checked):hover {
-          background-color: rgb(from var(--linter-severity-color) r g b / 0.3);
+          background-color: rgb(from var(--diagnostics-severity-color) r g b / 0.3);
         }
       }
     }
 
-    .linter-position {
+    .diagnostics-position {
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
 
-      .linter-file-path {
+      .diagnostics-file-path {
         color: var(--text-color-subtle);
         display: inline-block;
         max-width: calc(100% - 4.5em);
@@ -281,16 +281,16 @@
         vertical-align: bottom;
       }
 
-      .linter-file-line {
+      .diagnostics-file-line {
         color: var(--text-color);
         white-space: nowrap;
       }
 
-      .linter-file-path + .linter-file-line {
+      .diagnostics-file-path + .diagnostics-file-line {
         margin-left: 0.5em;
       }
 
-      .linter-log-ref {
+      .diagnostics-log-ref {
         margin-left: 0.5em;
         padding: 0 0.3em;
         font-size: 0.85em;
@@ -317,14 +317,14 @@
      * and finding which those are means every row being the same height. The
      * full text is still a click away on the details affordance, and the hover
      * tooltip carries it too. */
-    .linter-description {
+    .diagnostics-description {
       display: flex;
       flex-wrap: nowrap;
       align-items: baseline;
       column-gap: 0.5em;
       overflow: hidden;
 
-      .linter-excerpt {
+      .diagnostics-excerpt {
         flex: 0 1 auto;
         min-width: 0;
         white-space: nowrap;
@@ -340,7 +340,7 @@
         }
       }
 
-      .linter-detail {
+      .diagnostics-detail {
         flex: 0 1 auto;
         min-width: 0;
         color: var(--text-color-subtle);
@@ -350,8 +350,8 @@
         text-overflow: ellipsis;
       }
 
-      .linter-detail-toggle,
-      .linter-more-info {
+      .diagnostics-detail-toggle,
+      .diagnostics-more-info {
         flex: 0 0 auto;
         padding: 0 0.3em;
         font-size: 0.85em;
@@ -370,11 +370,11 @@
         }
       }
 
-      .linter-detail-toggle {
+      .diagnostics-detail-toggle {
         cursor: default;
       }
 
-      .linter-more-info {
+      .diagnostics-more-info {
         cursor: pointer;
       }
     }
@@ -382,7 +382,7 @@
     /* Stands in for the rows above and below the window that were not rendered,
      * so the scrollbar reflects the whole list. It has no cells and must not
      * pick up any of the row styling. */
-    .linter-spacer {
+    .diagnostics-spacer {
       display: block;
       padding: 0;
       border: none;
@@ -390,11 +390,11 @@
       pointer-events: none;
     }
 
-    .linter-row {
+    .diagnostics-row {
       /* Every row is exactly this tall, and the panel reads the value back to
        * work out which rows the viewport is showing. Change it here and the
        * arithmetic follows; hard-code a height anywhere else and it will not. */
-      height: var(--linter-row-height);
+      height: var(--diagnostics-row-height);
       grid-template-rows: minmax(0, 1fr);
       box-sizing: border-box;
       overflow: hidden;
@@ -408,42 +408,42 @@
 
       /* Transparent by default so a row of unknown severity still gets neutral
        * hover feedback: rgb(from transparent r g b / 0.08) is a faint black. */
-      --linter-severity-background: transparent;
+      --diagnostics-severity-background: transparent;
       transition: background-color 0.15s ease-out;
       cursor: default;
 
       &.error {
-        --linter-severity-background: var(--background-color-error);
+        --diagnostics-severity-background: var(--background-color-error);
       }
       &.warning {
-        --linter-severity-background: var(--background-color-warning);
+        --diagnostics-severity-background: var(--background-color-warning);
       }
       &.info {
-        --linter-severity-background: var(--background-color-info);
+        --diagnostics-severity-background: var(--background-color-info);
       }
       /* Hints tint from the text colour, not a background colour: they have no
        * saturated background token, by design. */
       &.hint {
-        --linter-severity-background: var(--text-color-hint);
+        --diagnostics-severity-background: var(--text-color-hint);
       }
 
       &:hover {
-        background-color: rgb(from var(--linter-severity-background) r g b / 0.08);
+        background-color: rgb(from var(--diagnostics-severity-background) r g b / 0.08);
       }
 
       &.current {
-        background-color: rgb(from var(--linter-severity-background) r g b / 0.25);
+        background-color: rgb(from var(--diagnostics-severity-background) r g b / 0.25);
 
         &:hover {
-          background-color: rgb(from var(--linter-severity-background) r g b / 0.3);
+          background-color: rgb(from var(--diagnostics-severity-background) r g b / 0.3);
         }
       }
     }
   }
 
   &:focus-within {
-    .linter-table {
-      .linter-row.focused {
+    .diagnostics-table {
+      .diagnostics-row.focused {
         outline: 1px dotted var(--text-color-highlight);
         outline-offset: -2px;
       }
@@ -453,16 +453,16 @@
 
 /* Respect reduced motion while retaining visible status indicators. */
 @media (prefers-reduced-motion: reduce) {
-  .linter-panel
-    .linter-table
+  .diagnostics
+    .diagnostics-table
     :is(
-      .linter-header-sortable,
-      .linter-row,
-      .linter-position .linter-log-ref,
-      .linter-description .linter-detail-toggle,
-      .linter-description .linter-more-info,
-      .linter-toggles .linter-view-tab,
-      .linter-toggles .input-label
+      .diagnostics-header-sortable,
+      .diagnostics-row,
+      .diagnostics-position .diagnostics-log-ref,
+      .diagnostics-description .diagnostics-detail-toggle,
+      .diagnostics-description .diagnostics-more-info,
+      .diagnostics-toggles .diagnostics-view-tab,
+      .diagnostics-toggles .input-label
     ) {
     transition: none;
   }

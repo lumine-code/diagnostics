@@ -1,5 +1,5 @@
 {
-  // Packages > Linter Panel menu. Four items, so flat.
+  // Packages > Diagnostics menu follows the order of use.
   "menu": [
     {
       "label": "View",
@@ -8,8 +8,8 @@
           "label": "Toggle View",
           "submenu": [
             {
-              "label": "Linter Panel",
-              "command": "linter-panel:toggle",
+              "label": "Diagnostics",
+              "command": "diagnostics:toggle",
               "group": "panels",
               "order": 10
             }
@@ -21,12 +21,17 @@
       "label": "Packages",
       "submenu": [
         {
-          "label": "Linter Panel",
+          "label": "Diagnostics",
           "submenu": [
-            { "label": "Toggle Linter Panel", "command": "linter-panel:toggle" },
-            { "label": "Toggle Linter Panel Focus", "command": "linter-panel:toggle-focus" },
-            { "label": "Show Active File Diagnostics", "command": "linter-panel:file-mode" },
-            { "label": "Show Project Diagnostics", "command": "linter-panel:project-mode" }
+            { "label": "Toggle Diagnostics", "command": "diagnostics:toggle" },
+            { "label": "Toggle Diagnostics Focus", "command": "diagnostics:toggle-focus" },
+            { "type": "separator" },
+            { "label": "Next Diagnostic", "command": "diagnostics:next" },
+            { "label": "Previous Diagnostic", "command": "diagnostics:previous" },
+            { "label": "Clear All Diagnostics", "command": "diagnostics:clear" },
+            { "type": "separator" },
+            { "label": "Show Active File Diagnostics", "command": "diagnostics:file-mode" },
+            { "label": "Show Project Diagnostics", "command": "diagnostics:project-mode" }
           ]
         }
       ]
@@ -36,10 +41,10 @@
   // the panel's constructor: a menu file is registered once for the package,
   // where lumine.contextMenu.add never de-duplicates.
   "context-menu": {
-    ".linter-panel .linter-row": [
+    ".diagnostics .diagnostics-row": [
       { "type": "separator" },
-      { "label": "Copy Description", "command": "linter-panel:copy-description" },
-      { "label": "Copy Details", "command": "linter-panel:copy-details" },
+      { "label": "Copy Description", "command": "diagnostics:copy-description" },
+      { "label": "Copy Details", "command": "diagnostics:copy-details" },
       { "type": "separator" }
     ]
   }

@@ -17,7 +17,7 @@ const parseJsonc = (rel) =>
 // The front end was extracted from `linter`, which keeps the hub. These guard
 // the boundary: every command, config key and selector this package ships is
 // its own, and nothing it needs was left behind.
-describe("linter-panel package assets", () => {
+describe("diagnostics package assets", () => {
   it("ships keymaps and menus as JSONC, not CSON or plain JSON", () => {
     expect(exists("keymaps/main.jsonc")).toBe(true);
     expect(exists("menus/main.jsonc")).toBe(true);
@@ -27,9 +27,9 @@ describe("linter-panel package assets", () => {
 
   it("claims alt-l for the reveal tier, on its own command", () => {
     const keymap = parseJsonc("keymaps/main.jsonc");
-    expect(keymap["lumine-workspace"]["alt-l"]).toBe("linter-panel:toggle-focus");
+    expect(keymap["lumine-workspace"]["alt-l"]).toBe("diagnostics:toggle-focus");
     // The panel's own keys sit under its root class, never at workspace scope.
-    expect(keymap[".linter-panel"]["escape"]).toBe("core:cancel");
+    expect(keymap[".diagnostics"]["escape"]).toBe("core:cancel");
     expect(keymap["lumine-workspace"]["escape"]).toBeUndefined();
   });
 
@@ -37,25 +37,23 @@ describe("linter-panel package assets", () => {
     const files = ["menus/main.jsonc", "keymaps/main.jsonc"];
     for (const file of files) {
       const source = read(file);
-      // `linter:` would be the hub's namespace. `linter-panel:` starts with it,
-      // so the check has to look for the colon that ends the bare name.
-      expect(source.replace(/linter-panel:/g, "")).not.toContain("linter:");
+      expect(source).not.toContain("linter:");
     }
     const menu = parseJsonc("menus/main.jsonc");
     const flat = JSON.stringify(menu);
-    expect(flat).toContain("linter-panel:toggle");
+    expect(flat).toContain("diagnostics:toggle");
     // Menu entries must use the singular `command` key.
     expect(flat).not.toContain('"commands"');
   });
 
   it("puts the row copy commands in a context menu, fenced by separators", () => {
     const menu = parseJsonc("menus/main.jsonc");
-    const rows = menu["context-menu"][".linter-panel .linter-row"];
+    const rows = menu["context-menu"][".diagnostics .diagnostics-row"];
     expect(rows[0].type).toBe("separator");
     expect(rows[rows.length - 1].type).toBe("separator");
     expect(rows.map((item) => item.command).filter(Boolean)).toEqual([
-      "linter-panel:copy-description",
-      "linter-panel:copy-details",
+      "diagnostics:copy-description",
+      "diagnostics:copy-details",
     ]);
   });
 
@@ -71,28 +69,28 @@ describe("linter-panel package assets", () => {
 
   it("carries the panel and the status tile, and none of the hub's decorations", () => {
     const css = read("styles/main.css");
-    expect(css).toContain(".linter-panel {");
-    expect(css).toContain(".linter-status {");
+    expect(css).toContain(".diagnostics {");
+    expect(css).toContain(".diagnostics-status {");
     // Underlines, gutter dots and the hover surface stayed with the hub.
-    expect(css).not.toContain(".linter-text");
-    expect(css).not.toContain(".linter-line-number");
-    expect(css).not.toContain(".linter-hover");
+    expect(css).not.toContain(".diagnostics-text");
+    expect(css).not.toContain(".diagnostics-line-number");
+    expect(css).not.toContain(".diagnostics-hover");
   });
 
   it("resolves the row height to a length, because the panel reads it back", () => {
     const css = read("styles/main.css");
-    expect(css).toMatch(/--linter-row-height:\s*[\d.]+(em|px|rem)/);
+    expect(css).toMatch(/--diagnostics-row-height:\s*[\d.]+(em|px|rem)/);
   });
 
-  it("is named `linter-panel` and declares the seam it lives on", () => {
+  it("is named `diagnostics` and declares the seam it lives on", () => {
     const pkg = JSON.parse(read("package.json"));
-    expect(pkg.name).toBe("linter-panel");
+    expect(pkg.name).toBe("diagnostics");
     expect(pkg.author).toBe("lumine-code");
-    expect(pkg.repository).toBe("https://github.com/lumine-code/linter-panel");
+    expect(pkg.repository).toBe("https://github.com/lumine-code/diagnostics");
     expect(pkg.dependencies["@lumine-code/etch"]).toBeDefined();
     expect(pkg.providedServices["linter.ui"].versions["1.0.0"]).toBe("provideLinterUI");
     expect(pkg.consumedServices["status-bar"].versions["^2.0.0"]).toBe("consumeStatusBar");
-    expect(pkg.deserializers.LinterPanel).toBe("deserializePanel");
+    expect(pkg.deserializers.Diagnostics).toBe("deserializePanel");
     // A deserializer runs during window startup without activating the package,
     // so what it needs is built in `initialize`. Exporting one is part of
     // declaring the other.
@@ -117,6 +115,7 @@ describe("linter-panel package assets", () => {
     for (const file of fs.readdirSync(path.join(root, "lib"))) {
       if (!/\.jsx?$/.test(file)) continue;
       expect(read(path.join("lib", file))).not.toMatch(/require\(["'][.]{2}\/[.]{2}\//);
+      expect(read(path.join("lib", file))).not.toContain('"linter:');
     }
   });
 });

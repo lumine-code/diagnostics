@@ -3,10 +3,10 @@
   // bare alt-<letter> is the tier for revealing a surface; nothing else claims
   // one.
   "lumine-workspace": {
-    "alt-l": "linter-panel:toggle-focus"
+    "alt-l": "diagnostics:toggle-focus"
   },
   // Keyboard navigation while the panel itself is focused.
-  ".linter-panel": {
+  ".diagnostics": {
     "up": "core:move-up",
     "down": "core:move-down",
     "enter": "core:confirm",

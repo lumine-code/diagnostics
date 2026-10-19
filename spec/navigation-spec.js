@@ -1,4 +1,4 @@
-const { LinterPanel } = require("../lib/linter-panel");
+const { Diagnostics } = require("../lib/diagnostics");
 const { Front } = require("../lib/front");
 const { fakeHub, normalize } = require("./fake-hub");
 
@@ -21,8 +21,8 @@ describe("Panel diagnostic navigation", () => {
       ],
     },
   });
-  const buttons = () => Array.from(panel.element.querySelectorAll("button.linter-navigation"));
-  const clearButton = () => panel.element.querySelector("button.linter-clear");
+  const buttons = () => Array.from(panel.element.querySelectorAll("button.diagnostics-navigation"));
+  const clearButton = () => panel.element.querySelector("button.diagnostics-clear");
   const publish = async (next) => {
     messages = normalize(next);
     front.render({ messages });
@@ -37,7 +37,7 @@ describe("Panel diagnostic navigation", () => {
   };
 
   beforeEach(async () => {
-    lumine.config.set("linter-panel.defaultSortMethod", "position");
+    lumine.config.set("diagnostics.defaultSortMethod", "position");
     messages = [];
     currentMessages = null;
     cursorEditor = null;
@@ -50,7 +50,7 @@ describe("Panel diagnostic navigation", () => {
         editor: () => cursorEditor,
       }),
     );
-    panel = new LinterPanel(front);
+    panel = new Diagnostics(front);
     front.panel = panel;
     jasmine.attachToDOM(panel.element);
     await panel.update();
@@ -99,7 +99,7 @@ describe("Panel diagnostic navigation", () => {
   });
 
   it("disables clearing an empty or disconnected hub and guards direct calls", async () => {
-    const dispatch = spyOn(lumine.commands, "dispatch");
+    const clear = spyOn(front, "clearMessages");
     expect(clearButton().getAttribute("aria-label")).toBe("Clear All Diagnostics");
     expect(clearButton().disabled).toBe(true);
     clearButton().click();
@@ -112,7 +112,7 @@ describe("Panel diagnostic navigation", () => {
     expect(clearButton().disabled).toBe(true);
     clearButton().click();
     panel._clearMessages();
-    expect(dispatch).not.toHaveBeenCalled();
+    expect(clear).not.toHaveBeenCalled();
   });
 
   it("clears all diagnostics even when the current file or severity filter shows none", async () => {
@@ -120,9 +120,9 @@ describe("Panel diagnostic navigation", () => {
     await publish([diagnostic("another file", 0, "warning", "/b.js")]);
     expect(buttons().every((button) => button.disabled)).toBe(true);
     expect(clearButton().disabled).toBe(false);
-    const dispatch = spyOn(lumine.commands, "dispatch");
+    const clear = spyOn(front.hub, "clearMessages");
     clearButton().click();
-    expect(dispatch).toHaveBeenCalledOnceWith(panel.element, "linter:clear");
+    expect(clear).toHaveBeenCalledTimes(1);
 
     front.setViewMode("project");
     panel.toggleVisibility("warning");
@@ -130,10 +130,7 @@ describe("Panel diagnostic navigation", () => {
     expect(buttons().every((button) => button.disabled)).toBe(true);
     expect(clearButton().disabled).toBe(false);
     clearButton().click();
-    expect(dispatch.calls.allArgs()).toEqual([
-      [panel.element, "linter:clear"],
-      [panel.element, "linter:clear"],
-    ]);
+    expect(clear).toHaveBeenCalledTimes(2);
   });
 
   it("follows descending panel sort and severity filters while wrapping at both ends", async () => {

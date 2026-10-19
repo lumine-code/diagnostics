@@ -14,7 +14,7 @@ describe("lib/status", () => {
 
   const tileFor = (severity) => status.counters.find((tile) => tile.severity.name === severity);
   const isHidden = (severity) =>
-    tileFor(severity).counter.classList.contains("linter-status-counter-hidden");
+    tileFor(severity).counter.classList.contains("diagnostics-status-counter-hidden");
   const visibleSeverities = () =>
     status.counters
       .filter(({ severity }) => !isHidden(severity.name))
@@ -24,7 +24,7 @@ describe("lib/status", () => {
   beforeEach(() => {
     messages = [];
     lintingDisabled = false;
-    lumine.config.set("linter-panel.statusMode", true);
+    lumine.config.set("diagnostics.statusMode", true);
     front = new Front();
     // Whether linting is disabled is a question about an editor's buffer.
     const editor = {};
@@ -88,12 +88,12 @@ describe("lib/status", () => {
       "hint",
     ]);
     for (const { counter, label } of noEditorStatus.counters) {
-      expect(counter.classList).toContain("linter-status-counter-hidden");
+      expect(counter.classList).toContain("diagnostics-status-counter-hidden");
       expect(label.textContent).toBe("0");
     }
     expect(noEditorStatus.stateIcon.hidden).toBe(false);
     expect(noEditorStatus.stateIcon.classList).toContain("icon-checklist");
-    expect(noEditorStatus.element.classList).toContain("linter-status-unavailable");
+    expect(noEditorStatus.element.classList).toContain("diagnostics-status-unavailable");
     const [tooltip] = lumine.tooltips.findTooltips(noEditorStatus.element);
     expect(tooltip.getTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
 
@@ -118,7 +118,7 @@ describe("lib/status", () => {
   });
 
   it("replaces all zero counters with one neutral icon and restores it after messages clear", () => {
-    expect(status.element.classList).not.toContain("linter-status-unavailable");
+    expect(status.element.classList).not.toContain("diagnostics-status-unavailable");
     expect(visibleSeverities()).toEqual([]);
     expect(status.stateIcon.hidden).toBe(false);
     expect(status.stateIcon.classList).toContain("icon-checklist");
@@ -141,14 +141,14 @@ describe("lib/status", () => {
     const hub = front.hub;
 
     front.detach();
-    expect(status.element.classList).toContain("linter-status-unavailable");
+    expect(status.element.classList).toContain("diagnostics-status-unavailable");
     expect(visibleSeverities()).toEqual([]);
     expect(status.stateIcon.hidden).toBe(false);
     expect(status.stateIcon.classList).toContain("icon-checklist");
     expect(tooltipTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
 
     front.attach(hub);
-    expect(status.element.classList).not.toContain("linter-status-unavailable");
+    expect(status.element.classList).not.toContain("diagnostics-status-unavailable");
     expect(visibleSeverities()).toEqual(["warning"]);
     expect(status.stateIcon.hidden).toBe(true);
     expect(tooltipTitle()).toBe("File diagnostics: 1 message. Click to toggle the panel.");
@@ -308,7 +308,7 @@ describe("lib/status", () => {
       expect(status.stateIcon.classList).toContain("icon-circle-slash");
       expect(status.stateIcon.classList).not.toContain("icon-checklist");
       expect(status.element.classList).toContain("linting-disabled");
-      expect(status.element.classList).not.toContain("linter-status-unavailable");
+      expect(status.element.classList).not.toContain("diagnostics-status-unavailable");
       expect(tooltipTitle()).toBe(
         "File diagnostics: linting disabled for this file. Click to toggle the panel.",
       );
@@ -361,30 +361,30 @@ describe("lib/status", () => {
 
   describe("optional visibility", () => {
     beforeEach(() => {
-      lumine.config.set("linter-panel.statusMode", false);
+      lumine.config.set("diagnostics.statusMode", false);
     });
 
     it("hides an empty enabled state and stays visible for hint-only messages", () => {
-      expect(status.element.classList).toContain("linter-status-hidden");
+      expect(status.element.classList).toContain("diagnostics-status-hidden");
       messages = [message("hint")];
       front.render({ messages });
-      expect(status.element.classList).not.toContain("linter-status-hidden");
+      expect(status.element.classList).not.toContain("diagnostics-status-hidden");
       expect(visibleSeverities()).toEqual(["hint"]);
       expect(status.stateIcon.hidden).toBe(true);
 
       messages = [];
       front.render({ messages });
-      expect(status.element.classList).toContain("linter-status-hidden");
+      expect(status.element.classList).toContain("diagnostics-status-hidden");
     });
 
     it("keeps disabled file linting visible but does not disable an empty project", () => {
       lintingDisabled = true;
       status.update();
-      expect(status.element.classList).not.toContain("linter-status-hidden");
+      expect(status.element.classList).not.toContain("diagnostics-status-hidden");
       expect(status.stateIcon.classList).toContain("icon-circle-slash");
 
       front.setViewMode("project");
-      expect(status.element.classList).toContain("linter-status-hidden");
+      expect(status.element.classList).toContain("diagnostics-status-hidden");
       expect(status.element.classList).not.toContain("linting-disabled");
     });
   });

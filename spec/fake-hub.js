@@ -85,6 +85,9 @@ function fakeHub({ messages = () => [], current = null, editor = () => null } = 
     getSeverities: () => SEVERITIES,
     revealMessage: () => {},
     deleteMessages: () => {},
+    nextMessage: () => {},
+    previousMessage: () => {},
+    clearMessages: () => {},
     isLintingDisabled: () => false,
     getDescription(message) {
       const { description } = message;

@@ -1,4 +1,4 @@
-const { LinterPanel } = require("../lib/linter-panel");
+const { Diagnostics } = require("../lib/diagnostics");
 const { Front } = require("../lib/front");
 const { normalize, fakeHub } = require("./fake-hub");
 
@@ -6,7 +6,7 @@ const { normalize, fakeHub } = require("./fake-hub");
 // the severity vocabulary the hub hands over. These specs pin the
 // generalization, and the two ways an unknown severity used to break the panel:
 // a blank cell and a NaN sort.
-describe("lib/linter-panel", () => {
+describe("lib/diagnostics", () => {
   let panel;
   let front;
   let messages;
@@ -26,20 +26,20 @@ describe("lib/linter-panel", () => {
   });
 
   const rowsInOrder = () =>
-    Array.from(panel.element.querySelectorAll(".linter-row")).map(
-      (row) => row.querySelector(".linter-severity")?.textContent,
+    Array.from(panel.element.querySelectorAll(".diagnostics-row")).map(
+      (row) => row.querySelector(".diagnostics-severity")?.textContent,
     );
 
   // The real front end against a stand-in hub: the seam under test is the panel
   // against the front end, and the front end is thin enough that stubbing it
   // would only pin a fiction.
   beforeEach(async () => {
-    lumine.config.set("linter-panel.defaultSortMethod", "severity");
+    lumine.config.set("diagnostics.defaultSortMethod", "severity");
     messages = [];
     cursorEditor = null;
     front = new Front();
     front.attach(fakeHub({ messages: () => messages, editor: () => cursorEditor }));
-    panel = new LinterPanel(front);
+    panel = new Diagnostics(front);
     front.panel = panel;
     jasmine.attachToDOM(panel.element);
     await panel.update();
@@ -62,9 +62,11 @@ describe("lib/linter-panel", () => {
   });
 
   describe("the keyboard cursor", () => {
-    const focusedRows = () => panel.element.querySelectorAll(".linter-row.focused").length;
+    const focusedRows = () => panel.element.querySelectorAll(".diagnostics-row.focused").length;
     const focusedText = () =>
-      panel.element.querySelector(".linter-row.focused .linter-excerpt")?.textContent.trim();
+      panel.element
+        .querySelector(".diagnostics-row.focused .diagnostics-excerpt")
+        ?.textContent.trim();
 
     it("does not exist until the first arrow press, entering from the ends", async () => {
       await publish(["error", "warning", "info"]);
@@ -137,9 +139,9 @@ describe("lib/linter-panel", () => {
 
       expect(panel._focusedMessage).toBe(replacement);
       expect(focusedText()).toBe(original.excerpt);
-      expect(panel.element.querySelector(".linter-row.focused .linter-detail").textContent).toBe(
-        "latest details",
-      );
+      expect(
+        panel.element.querySelector(".diagnostics-row.focused .diagnostics-detail").textContent,
+      ).toBe("latest details");
       const reveal = spyOn(front, "revealMessage");
       panel._confirmFocused();
       expect(reveal).toHaveBeenCalledOnceWith(replacement);
@@ -325,23 +327,23 @@ describe("lib/linter-panel", () => {
       await panel.update();
     };
 
-    const cell = () => panel.element.querySelector(".linter-description");
+    const cell = () => panel.element.querySelector(".diagnostics-description");
 
     it("renders the excerpt beside a string description", async () => {
       await publishOne({ description: "Ruff: F401" });
-      expect(cell().querySelector(".linter-excerpt").textContent.trim()).toBe("error at 0");
-      const detail = cell().querySelector(".linter-detail");
+      expect(cell().querySelector(".diagnostics-excerpt").textContent.trim()).toBe("error at 0");
+      const detail = cell().querySelector(".diagnostics-detail");
       expect(detail.textContent).toBe("Ruff: F401");
       expect(detail.title).toBe("Ruff: F401");
-      expect(cell().querySelector(".linter-detail-toggle")).toBeNull();
+      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
     });
 
     it("renders only the excerpt when the message has no long form", async () => {
       await publishOne({});
-      expect(cell().querySelector(".linter-excerpt").textContent.trim()).toBe("error at 0");
-      expect(cell().querySelector(".linter-detail")).toBeNull();
-      expect(cell().querySelector(".linter-detail-toggle")).toBeNull();
-      expect(cell().querySelector(".linter-more-info")).toBeNull();
+      expect(cell().querySelector(".diagnostics-excerpt").textContent.trim()).toBe("error at 0");
+      expect(cell().querySelector(".diagnostics-detail")).toBeNull();
+      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
+      expect(cell().querySelector(".diagnostics-more-info")).toBeNull();
     });
 
     it("resolves a lazy description when its affordance is clicked", async () => {
@@ -353,14 +355,14 @@ describe("lib/linter-panel", () => {
         },
       });
       expect(calls).toBe(0);
-      expect(cell().querySelector(".linter-detail")).toBeNull();
+      expect(cell().querySelector(".diagnostics-detail")).toBeNull();
 
-      cell().querySelector(".linter-detail-toggle").click();
+      cell().querySelector(".diagnostics-detail-toggle").click();
       await settle();
 
       expect(calls).toBe(1);
-      expect(cell().querySelector(".linter-detail").textContent).toBe("the long form");
-      expect(cell().querySelector(".linter-detail-toggle")).toBeNull();
+      expect(cell().querySelector(".diagnostics-detail").textContent).toBe("the long form");
+      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
     });
 
     it("opens the message url externally instead of revealing the message", async () => {
@@ -368,7 +370,7 @@ describe("lib/linter-panel", () => {
       const reveal = spyOn(front, "revealMessage");
       await publishOne({ url: "https://docs.astral.sh/ruff/rules/unused-import" });
 
-      cell().querySelector(".linter-more-info").click();
+      cell().querySelector(".diagnostics-more-info").click();
 
       expect(lumine.shell.openExternal).toHaveBeenCalledWith(
         "https://docs.astral.sh/ruff/rules/unused-import",
@@ -379,7 +381,7 @@ describe("lib/linter-panel", () => {
     it("does not render an unsupported provider URL", async () => {
       await publishOne({ url: "javascript:alert(1)" });
 
-      expect(cell().querySelector(".linter-more-info")).toBeNull();
+      expect(cell().querySelector(".diagnostics-more-info")).toBeNull();
     });
 
     it("reports a failure to open provider documentation", async () => {
@@ -388,7 +390,7 @@ describe("lib/linter-panel", () => {
       spyOn(lumine.notifications, "addWarning");
       await publishOne({ url: "https://example.com/rule" });
 
-      cell().querySelector(".linter-more-info").click();
+      cell().querySelector(".diagnostics-more-info").click();
       await conditionPromise(() => lumine.notifications.addWarning.calls.any());
 
       expect(lumine.notifications.addWarning).toHaveBeenCalledWith(
@@ -400,9 +402,9 @@ describe("lib/linter-panel", () => {
 
   it("labels a row of unknown severity with its raw name, not undefined", async () => {
     await publish(["boom"]);
-    const row = panel.element.querySelector(".linter-row");
-    expect(row.className).toBe("linter-row unknown");
-    expect(row.querySelector(".linter-severity").textContent).toBe("boom");
+    const row = panel.element.querySelector(".diagnostics-row");
+    expect(row.className).toBe("diagnostics-row unknown");
+    expect(row.querySelector(".diagnostics-severity").textContent).toBe("boom");
   });
 
   // The list renders only the rows the viewport can show. Everything outside
@@ -411,7 +413,7 @@ describe("lib/linter-panel", () => {
   describe("with more messages than fit on screen", () => {
     const TOTAL = 9300;
 
-    const rows = () => Array.from(panel.element.querySelectorAll(".linter-row"));
+    const rows = () => Array.from(panel.element.querySelectorAll(".diagnostics-row"));
     const renderedIndices = () =>
       rows()
         .map((row) => parseInt(row.dataset.visibleIndex, 10))
@@ -543,9 +545,9 @@ describe("lib/linter-panel", () => {
     it("preserves overlapping row nodes and their positions across scroll blocks", async () => {
       const container = scrollContainer();
       const rowAt = (index) =>
-        container.querySelector(`.linter-row[data-visible-index="${index}"]`);
+        container.querySelector(`.diagnostics-row[data-visible-index="${index}"]`);
       const row = rowAt(40);
-      const excerpt = row.querySelector(".linter-excerpt");
+      const excerpt = row.querySelector(".diagnostics-excerpt");
       const content = excerpt.firstChild;
       const documentTop = row.getBoundingClientRect().top + container.scrollTop;
 
@@ -555,7 +557,7 @@ describe("lib/linter-panel", () => {
       await panel.update();
 
       expect(rowAt(40)).toBe(row);
-      expect(row.querySelector(".linter-excerpt")).toBe(excerpt);
+      expect(row.querySelector(".diagnostics-excerpt")).toBe(excerpt);
       expect(excerpt.firstChild).toBe(content);
       expect(
         Math.abs(row.getBoundingClientRect().top + container.scrollTop - documentTop),
@@ -625,7 +627,7 @@ describe("lib/linter-panel", () => {
       await panel.update();
       panel._updateCurrentRowHighlight();
 
-      const current = panel.element.querySelector(".linter-row.current");
+      const current = panel.element.querySelector(".diagnostics-row.current");
       expect(current).not.toBeNull();
       expect(parseInt(current.dataset.visibleIndex, 10)).toBe(2000);
       editor.destroy();
@@ -651,7 +653,7 @@ describe("lib/linter-panel", () => {
           expect(renderedIndices()).not.toContain(2000);
           expect(panel._currentRowIndex).toBe(2000);
           expect(panel._currentMessage()).toBe(messages[2000]);
-          expect(panel.element.querySelector(".linter-row.current")).toBeNull();
+          expect(panel.element.querySelector(".diagnostics-row.current")).toBeNull();
         }
 
         scrollContainer().scrollTop = 2000 * panel._rowHeight;
@@ -659,7 +661,7 @@ describe("lib/linter-panel", () => {
         await panel.update();
 
         expect(panel._currentMessage()).toBe(messages[2000]);
-        expect(panel.element.querySelector(".linter-row.current")?.dataset.visibleIndex).toBe(
+        expect(panel.element.querySelector(".diagnostics-row.current")?.dataset.visibleIndex).toBe(
           "2000",
         );
       } finally {
@@ -706,7 +708,7 @@ describe("lib/linter-panel", () => {
         scrollContainer().scrollTop = 4000 * panel._rowHeight;
         panel._onScroll();
         await panel.update();
-        expect(panel.element.querySelector(".linter-row.current")).toBeNull();
+        expect(panel.element.querySelector(".diagnostics-row.current")).toBeNull();
 
         panel._moveFocus(1);
         await panel.update();
@@ -723,7 +725,7 @@ describe("lib/linter-panel", () => {
   // — 200 rows, markdown and all — because a panel nobody can see measures no
   // row height, which is the same condition as a first render.
   describe("while nothing can see it", () => {
-    const rowCount = () => panel.element.querySelectorAll(".linter-row").length;
+    const rowCount = () => panel.element.querySelectorAll(".diagnostics-row").length;
 
     it("renders no rows once it leaves the document", async () => {
       await publish(["error", "warning", "info"]);
@@ -847,8 +849,8 @@ describe("lib/linter-panel", () => {
     it("labels the row untitled rather than leaving the cell blank", async () => {
       await publishBufferMessage();
 
-      const row = panel.element.querySelector(".linter-row");
-      expect(row.querySelector(".linter-file-path").textContent).toBe("untitled");
+      const row = panel.element.querySelector(".diagnostics-row");
+      expect(row.querySelector(".diagnostics-file-path").textContent).toBe("untitled");
     });
 
     it("reveals it through the workspace in the editor's shared scroll zone", async () => {
@@ -871,7 +873,7 @@ describe("lib/linter-panel", () => {
       messages[0].location.buffer = orphan;
       const open = spyOn(lumine.workspace, "open").and.callThrough();
 
-      panel.element.querySelector(".linter-row").click();
+      panel.element.querySelector(".diagnostics-row").click();
 
       expect(open).not.toHaveBeenCalled();
     });

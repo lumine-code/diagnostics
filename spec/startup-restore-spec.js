@@ -1,16 +1,16 @@
-describe("linter-panel startup restoration", () => {
+describe("diagnostics startup restoration", () => {
   let pack;
 
   beforeEach(async () => {
-    if (lumine.packages.getLoadedPackage("linter-panel"))
-      await lumine.packages.unloadPackage("linter-panel", { serialize: false });
-    pack = lumine.packages.loadPackage("linter-panel");
+    if (lumine.packages.getLoadedPackage("diagnostics"))
+      await lumine.packages.unloadPackage("diagnostics", { serialize: false });
+    pack = lumine.packages.loadPackage("diagnostics");
     pack.initializeForExternalUse("startup restoration spec");
   });
 
   afterEach(async () => {
-    if (lumine.packages.getLoadedPackage("linter-panel"))
-      await lumine.packages.unloadPackage("linter-panel", { serialize: false });
+    if (lumine.packages.getLoadedPackage("diagnostics"))
+      await lumine.packages.unloadPackage("diagnostics", { serialize: false });
   });
 
   it("destroys a restored panel when startup stops before activation", async () => {
@@ -22,7 +22,7 @@ describe("linter-panel startup restoration", () => {
 
   it("keeps the restored panel when activation follows", async () => {
     const panel = pack.mainModule.deserializePanel();
-    await lumine.packages.activatePackage("linter-panel");
+    await lumine.packages.activatePackage("diagnostics");
     expect(pack.mainModule.deserializePanel()).toBe(panel);
     await pack.deactivate();
   });

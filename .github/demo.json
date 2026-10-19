@@ -1,5 +1,5 @@
 {
-  "title": "linter-panel",
+  "title": "diagnostics",
   "description": "Inspect a TypeScript error in the diagnostics panel and its source code.",
   "recordedOn": "2026-10-17",
   "sourceRevision": "eb4cd44839ae8d6fe5832bcbe02705bf64a94de0",
@@ -33,7 +33,7 @@
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"
     },
-    "linter-panel": {
+    "diagnostics": {
       "revision": "eb4cd44839ae8d6fe5832bcbe02705bf64a94de0",
       "dirty": false,
       "workingTreeHash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"

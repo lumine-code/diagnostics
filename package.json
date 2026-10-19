@@ -1,5 +1,5 @@
 {
-  "name": "linter-panel",
+  "name": "diagnostics",
   "author": "lumine-code",
   "main": "./lib/main.js",
   "files": [
@@ -11,15 +11,14 @@
     "THIRD_PARTY_NOTICES"
   ],
   "version": "1.0.0",
-  "description": "Show lint messages in a sortable panel and on the status bar.",
-  "repository": "https://github.com/lumine-code/linter-panel",
+  "description": "Show diagnostics in a sortable panel and on the status bar.",
+  "repository": "https://github.com/lumine-code/diagnostics",
   "bugs": {
-    "url": "https://github.com/lumine-code/linter-panel/issues"
+    "url": "https://github.com/lumine-code/diagnostics/issues"
   },
-  "homepage": "https://github.com/lumine-code/linter-panel#readme",
+  "homepage": "https://github.com/lumine-code/diagnostics#readme",
   "license": "MIT",
   "keywords": [
-    "diagnostics",
     "errors",
     "warnings",
     "problems",
@@ -30,7 +29,7 @@
     "lumine": "^1.0.0"
   },
   "deserializers": {
-    "LinterPanel": "deserializePanel"
+    "Diagnostics": "deserializePanel"
   },
   "providedServices": {
     "linter.ui": {
@@ -71,7 +70,7 @@
   "configSchema": {
     "defaultSortMethod": {
       "title": "Default Sort Method",
-      "description": "Choose the default sorting method for linter messages",
+      "description": "Choose the default sorting method for diagnostics",
       "type": "string",
       "enum": [
         {

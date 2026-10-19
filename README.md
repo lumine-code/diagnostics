@@ -1,6 +1,6 @@
-# linter-panel
+# diagnostics
 
-Show lint messages in a sortable panel and on the status bar.
+Show diagnostics in a sortable panel and on the status bar.
 
 Fork of [steelbrain/linter-ui-default](https://github.com/steelbrain/linter-ui-default).
 
@@ -19,35 +19,38 @@ The front end for the [linter](https://github.com/lumine-code/linter) package. W
 
 ## Installation
 
-To install `linter-panel` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/linter-panel`.
+To install `diagnostics` search for it in the Install pane of the Lumine settings, or run the command `lumine --install lumine-code/diagnostics`.
 
 ## Commands
 
 Commands available in `lumine-workspace`:
 
-- `linter-panel:toggle`: show or hide the panel,
-- `linter-panel:toggle-focus`: focus the panel, or hand focus back to the editor,
-- `linter-panel:file-mode`: show only the messages of the active item,
-- `linter-panel:project-mode`: show the messages of the whole project.
+- `diagnostics:toggle`: show or hide the panel,
+- `diagnostics:toggle-focus`: focus the panel, or hand focus back to the editor,
+- `diagnostics:next`: go to the next diagnostic in the active document,
+- `diagnostics:previous`: go to the previous diagnostic in the active document,
+- `diagnostics:clear`: clear all diagnostics,
+- `diagnostics:file-mode`: show only the messages of the active item,
+- `diagnostics:project-mode`: show the messages of the whole project.
 
-Commands available in `.linter-panel`:
+Commands available in `.diagnostics`:
 
-- `linter-panel:copy-description`: copy the message under the pointer, with its long form,
-- `linter-panel:copy-details`: copy the whole message as JSON.
+- `diagnostics:copy-description`: copy the message under the pointer, with its long form,
+- `diagnostics:copy-details`: copy the whole message as JSON.
 
 ## Customization
 
 Restyle the panel from your `styles.css`:
 
 ```css
-.linter-panel {
-  --linter-row-height: 2.6em;
+.diagnostics {
+  --diagnostics-row-height: 2.6em;
 
-  .linter-row.current {
+  .diagnostics-row.current {
     background-color: var(--background-color-selected);
   }
 
-  .linter-excerpt {
+  .diagnostics-excerpt {
     font-family: var(--editor-font-family);
   }
 }

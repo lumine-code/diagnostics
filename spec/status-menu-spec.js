@@ -1,20 +1,22 @@
 const { fakeHub } = require("./fake-hub");
 
-describe("Linter status action menu", () => {
-  let tile, editor, cursorEditor;
+describe("Diagnostics status action menu", () => {
+  let tile, editor, cursorEditor, main, hub, messages;
   beforeEach(async () => {
     jasmine.useRealClock();
     jasmine.attachToDOM(lumine.workspace.getElement());
     await lumine.packages.activatePackage("status-bar");
-    const main = (await lumine.packages.activatePackage("linter-panel")).mainModule;
+    main = (await lumine.packages.activatePackage("diagnostics")).mainModule;
     editor = await lumine.workspace.open();
     editor.getElement().focus();
     cursorEditor = editor;
-    main.provideLinterUI().attach(fakeHub({ editor: () => cursorEditor }));
-    tile = lumine.workspace.getElement().querySelector(".linter-status");
+    messages = [];
+    hub = fakeHub({ messages: () => messages, editor: () => cursorEditor });
+    main.provideLinterUI().attach(hub);
+    tile = lumine.workspace.getElement().querySelector(".diagnostics-status");
   });
   afterEach(async () => {
-    await lumine.packages.deactivatePackage("linter-panel");
+    await lumine.packages.deactivatePackage("diagnostics");
   });
   it("shows all actions and reflects the current view mode", async () => {
     const menu = () => lumine.contextMenu.templateForElement(tile);
@@ -23,24 +25,24 @@ describe("Linter status action menu", () => {
         .filter((item) => item.command)
         .map((item) => item.command),
     ).toEqual([
-      "linter-panel:toggle",
-      "linter-panel:toggle-focus",
-      "linter:next",
-      "linter:previous",
-      "linter-panel:file-mode",
-      "linter-panel:project-mode",
-      "linter:clear",
+      "diagnostics:toggle",
+      "diagnostics:toggle-focus",
+      "diagnostics:next",
+      "diagnostics:previous",
+      "diagnostics:file-mode",
+      "diagnostics:project-mode",
+      "diagnostics:clear",
     ]);
-    expect(menu().find((item) => item.command === "linter-panel:file-mode").checked).toBe(true);
-    await lumine.commands.dispatch(tile, "linter-panel:project-mode");
-    expect(menu().find((item) => item.command === "linter-panel:file-mode").checked).toBe(false);
-    expect(menu().find((item) => item.command === "linter-panel:project-mode").checked).toBe(true);
+    expect(menu().find((item) => item.command === "diagnostics:file-mode").checked).toBe(true);
+    await lumine.commands.dispatch(tile, "diagnostics:project-mode");
+    expect(menu().find((item) => item.command === "diagnostics:file-mode").checked).toBe(false);
+    expect(menu().find((item) => item.command === "diagnostics:project-mode").checked).toBe(true);
   });
   it("shows Alt-L only for focusing and navigation shortcuts only while an editor has focus", () => {
-    const keys = lumine.keymaps.add("linter-status-editor-shortcuts-spec", {
+    const keys = lumine.keymaps.add("diagnostics-status-editor-shortcuts-spec", {
       "lumine-text-editor:not([mini])": {
-        "alt-'": "linter:next",
-        "alt-;": "linter:previous",
+        "alt-'": "diagnostics:next",
+        "alt-;": "diagnostics:previous",
       },
     });
     try {
@@ -48,25 +50,25 @@ describe("Linter status action menu", () => {
       const items = menu();
       const label = process.platform === "darwin" ? "⌥L" : "Alt+L";
       expect(
-        items.find((item) => item.command === "linter-panel:toggle").keyBindingLabel,
+        items.find((item) => item.command === "diagnostics:toggle").keyBindingLabel,
       ).toBeUndefined();
       expect(
-        items.find((item) => item.command === "linter-panel:toggle-focus").keyBindingLabel,
+        items.find((item) => item.command === "diagnostics:toggle-focus").keyBindingLabel,
       ).toBe(label);
-      expect(items.find((item) => item.command === "linter:next").keyBindingLabel).toBe(
+      expect(items.find((item) => item.command === "diagnostics:next").keyBindingLabel).toBe(
         process.platform === "darwin" ? "⌥'" : "Alt+'",
       );
-      expect(items.find((item) => item.command === "linter:previous").keyBindingLabel).toBe(
+      expect(items.find((item) => item.command === "diagnostics:previous").keyBindingLabel).toBe(
         process.platform === "darwin" ? "⌥;" : "Alt+;",
       );
       const popup = lumine.contextMenu.show(tile, items);
       try {
         expect(
-          popup.rootList.items.find((item) => item.template.command === "linter-panel:toggle-focus")
+          popup.rootList.items.find((item) => item.template.command === "diagnostics:toggle-focus")
             .keystrokeElement.textContent,
         ).toBe(label);
         expect(
-          popup.rootList.items.find((item) => item.template.command === "linter-panel:toggle")
+          popup.rootList.items.find((item) => item.template.command === "diagnostics:toggle")
             .keystrokeElement.textContent,
         ).toBe("");
       } finally {
@@ -74,10 +76,10 @@ describe("Linter status action menu", () => {
       }
       cursorEditor = null;
       lumine.packages
-        .getActivePackage("linter-panel")
+        .getActivePackage("diagnostics")
         .mainModule.provideLinterUI()
         .didChangeActiveItem();
-      expect(menu().find((item) => item.command === "linter:next").keyBindingLabel).toBe(
+      expect(menu().find((item) => item.command === "diagnostics:next").keyBindingLabel).toBe(
         process.platform === "darwin" ? "⌥'" : "Alt+'",
       );
       const button = document.createElement("button");
@@ -85,7 +87,7 @@ describe("Linter status action menu", () => {
       try {
         button.focus();
         expect(
-          menu().find((item) => item.command === "linter:next").keyBindingLabel,
+          menu().find((item) => item.command === "diagnostics:next").keyBindingLabel,
         ).toBeUndefined();
       } finally {
         button.remove();
@@ -105,17 +107,55 @@ describe("Linter status action menu", () => {
     tile.dispatchEvent(new MouseEvent("mouseup", { button: 0, metaKey: true }));
     tile.dispatchEvent(new MouseEvent("mouseup", { button: 0, shiftKey: true }));
     expect(dispatch.calls.allArgs()).toEqual([
-      [tile, "linter-panel:toggle"],
-      [tile, "linter-panel:project-mode"],
-      [tile, "linter:next"],
-      [tile, "linter:previous"],
+      [tile, "diagnostics:toggle"],
+      [tile, "diagnostics:project-mode"],
+      [tile, "diagnostics:next"],
+      [tile, "diagnostics:previous"],
     ]);
   });
   it("disposes menus and retained mouse listeners", async () => {
-    await lumine.packages.deactivatePackage("linter-panel");
+    await lumine.packages.deactivatePackage("diagnostics");
     const dispatch = spyOn(lumine.commands, "dispatch");
     tile.dispatchEvent(new MouseEvent("mouseup", { button: 0 }));
     expect(dispatch).not.toHaveBeenCalled();
     expect(lumine.contextMenu.templateForElement(tile)).toEqual([]);
+  });
+
+  it("dispatches its own actions through the connected backend and disables them on detach", async () => {
+    const next = spyOn(hub, "nextMessage");
+    const previous = spyOn(hub, "previousMessage");
+    const clear = spyOn(hub, "clearMessages");
+    const commands = ["diagnostics:next", "diagnostics:previous", "diagnostics:clear"];
+    for (const command of commands) {
+      expect(lumine.commands.canDispatch(tile, command)).toBe(false);
+    }
+    messages = [{ severity: "warning", excerpt: "warning" }];
+    main.provideLinterUI().render({ messages });
+    for (const command of commands) {
+      expect(lumine.commands.canDispatch(tile, command)).toBe(true);
+      await lumine.commands.dispatch(tile, command);
+    }
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(previous).toHaveBeenCalledTimes(1);
+    expect(clear).toHaveBeenCalledTimes(1);
+
+    main.provideLinterUI().dispose();
+    for (const command of commands) {
+      expect(lumine.commands.canDispatch(tile, command)).toBe(false);
+    }
+  });
+
+  it("opens the project view repeatedly without toggling an already visible panel closed", async () => {
+    const provider = main.provideLinterUI();
+    await provider.showProjectView();
+    const panel = main.deserializePanel();
+    expect(panel.getTitle()).toBe("Diagnostics");
+    expect(panel.pkg.viewMode).toBe("project");
+    expect(lumine.workspace.paneForItem(panel)).toBeTruthy();
+    expect(lumine.workspace.getBottomDock().isVisible()).toBe(true);
+
+    await provider.showProjectView();
+    expect(main.deserializePanel()).toBe(panel);
+    expect(lumine.workspace.getBottomDock().isVisible()).toBe(true);
   });
 });

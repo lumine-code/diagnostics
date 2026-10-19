@@ -60,4 +60,23 @@ describe("lib/front", () => {
     expect(front.getMessagesAtPosition(null, position)).toBe(messages);
     expect(hub.getMessagesAtPosition).toHaveBeenCalledOnceWith(null, position);
   });
+
+  it("uses the attached backend for navigation and clearing and stops after detaching", () => {
+    const hub = fakeHub();
+    const next = spyOn(hub, "nextMessage").and.returnValue("next");
+    const previous = spyOn(hub, "previousMessage").and.returnValue("previous");
+    const clear = spyOn(hub, "clearMessages").and.returnValue("cleared");
+    front.attach(hub);
+
+    expect(front.nextMessage()).toBe("next");
+    expect(front.previousMessage()).toBe("previous");
+    expect(front.clearMessages()).toBe("cleared");
+    front.detach();
+    expect(front.nextMessage()).toBeUndefined();
+    expect(front.previousMessage()).toBeUndefined();
+    expect(front.clearMessages()).toBeUndefined();
+    expect(next).toHaveBeenCalledTimes(1);
+    expect(previous).toHaveBeenCalledTimes(1);
+    expect(clear).toHaveBeenCalledTimes(1);
+  });
 });

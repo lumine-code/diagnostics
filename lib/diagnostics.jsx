@@ -4,7 +4,7 @@ const path = require("path");
 const { CompositeDisposable, Emitter } = require("lumine");
 const { renderExcerpt, messageSubject, editorForBuffer } = require("./helpers");
 
-const PANEL_URI = "lumine://linter-panel";
+const PANEL_URI = "lumine://diagnostics";
 const EXTERNAL_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
 
 const externalUrl = (value) => {
@@ -16,13 +16,13 @@ const externalUrl = (value) => {
   }
 };
 
-class LinterPanel {
+class Diagnostics {
   constructor(pkg) {
     this.pkg = pkg;
     this.editor = null;
     this.cwatch = null;
     this.emitter = new Emitter();
-    this.sortMethod = lumine.config.get("linter-panel.defaultSortMethod") || "severity";
+    this.sortMethod = lumine.config.get("diagnostics.defaultSortMethod") || "severity";
     this.sortDirection = "asc";
     // Severities the user has filtered out. Empty means "show everything", so a
     // severity the panel has never heard of stays visible rather than being
@@ -83,7 +83,7 @@ class LinterPanel {
 
     // Context menu: track which row was right-clicked
     this.element.addEventListener("contextmenu", (e) => {
-      const row = e.target.closest(".linter-row");
+      const row = e.target.closest(".diagnostics-row");
       this._contextRow = row;
     });
 
@@ -119,11 +119,11 @@ class LinterPanel {
     );
     this._disposables.add(
       lumine.commands.add(this.element, {
-        "linter-panel:copy-description": {
+        "diagnostics:copy-description": {
           description: "Copy the selected message's text to the clipboard.",
           didDispatch: () => this._copyDescription(),
         },
-        "linter-panel:copy-details": {
+        "diagnostics:copy-details": {
           description: "Copy the selected message with its file and line.",
           didDispatch: () => this._copyDetails(),
         },
@@ -162,7 +162,7 @@ class LinterPanel {
   viewModeChanged() {
     this._navigationMessage = null;
     // Clear .current highlight BEFORE state reset (etch won't touch it)
-    const currentRow = this.element?.querySelector(".linter-row.current");
+    const currentRow = this.element?.querySelector(".diagnostics-row.current");
     if (currentRow) {
       currentRow.classList.remove("current");
     }
@@ -178,7 +178,7 @@ class LinterPanel {
    */
   _onRowClick(event) {
     // Check if clicked on log reference link
-    const logRef = event.target.closest(".linter-log-ref");
+    const logRef = event.target.closest(".diagnostics-log-ref");
     if (logRef) {
       event.stopPropagation();
       const file = logRef.dataset.file;
@@ -195,7 +195,7 @@ class LinterPanel {
     }
 
     // "more info" opens the provider's documentation rather than the message
-    const moreInfo = event.target.closest(".linter-more-info");
+    const moreInfo = event.target.closest(".diagnostics-more-info");
     if (moreInfo) {
       event.stopPropagation();
       if (moreInfo.dataset.url) {
@@ -210,7 +210,7 @@ class LinterPanel {
     }
 
     // Find the clicked row
-    const row = event.target.closest(".linter-row");
+    const row = event.target.closest(".diagnostics-row");
     if (!row) return;
 
     const rowIndex = row.dataset.index;
@@ -223,7 +223,7 @@ class LinterPanel {
 
     // A lazy description is resolved on demand; the row renders it inline once
     // it arrives, so this does not move the cursor.
-    if (event.target.closest(".linter-detail-toggle")) {
+    if (event.target.closest(".diagnostics-detail-toggle")) {
       event.stopPropagation();
       this.pkg.resolveDescription(message).then(() => {
         // The panel can be gone by the time a slow provider answers.
@@ -241,7 +241,7 @@ class LinterPanel {
   }
 
   _onRowMiddleClick(event) {
-    const row = event.target.closest(".linter-row");
+    const row = event.target.closest(".diagnostics-row");
     if (!row) return;
 
     const rowIndex = row.dataset.index;
@@ -259,7 +259,7 @@ class LinterPanel {
     if (editor !== this.editor && !this._navigating) this._navigationMessage = null;
     this.editor = editor;
     // Clear .current highlight BEFORE re-render (etch won't touch it if virtual DOM unchanged)
-    const currentRow = this.element?.querySelector(".linter-row.current");
+    const currentRow = this.element?.querySelector(".diagnostics-row.current");
     if (currentRow) {
       currentRow.classList.remove("current");
     }
@@ -326,7 +326,7 @@ class LinterPanel {
     // tbody's children: a windowed render puts a spacer first and leaves most
     // of the list out of the DOM entirely.
     const rowAt = (visibleIndex) =>
-      tbody.querySelector(`.linter-row[data-visible-index="${visibleIndex}"]`);
+      tbody.querySelector(`.diagnostics-row[data-visible-index="${visibleIndex}"]`);
 
     // Remove current class from old row
     if (this._currentRowIndex >= 0) {
@@ -475,7 +475,7 @@ class LinterPanel {
   update() {
     // Etch does not own .current. Clear the DOM class before patching, but keep
     // its logical index so restoring the highlight does not also reset scroll.
-    const currentRow = this.element?.querySelector(".linter-row.current");
+    const currentRow = this.element?.querySelector(".diagnostics-row.current");
     if (currentRow) currentRow.classList.remove("current");
     return etch.update(this).then(() => {
       // The first render had no row to measure and put up a bootstrap window.
@@ -524,21 +524,21 @@ class LinterPanel {
 
     const severityClass =
       this.sortMethod === "severity"
-        ? "linter-header-sortable linter-header-active"
-        : "linter-header-sortable";
+        ? "diagnostics-header-sortable diagnostics-header-active"
+        : "diagnostics-header-sortable";
     const providerClass =
       this.sortMethod === "provider"
-        ? "linter-header-sortable linter-header-active"
-        : "linter-header-sortable";
+        ? "diagnostics-header-sortable diagnostics-header-active"
+        : "diagnostics-header-sortable";
 
     const thirdLabel = isProject ? "File" : "Position";
     const thirdClass =
       this.sortMethod === "position"
-        ? "linter-header-sortable linter-header-active"
-        : "linter-header-sortable";
+        ? "diagnostics-header-sortable diagnostics-header-active"
+        : "diagnostics-header-sortable";
 
     const head = (
-      <tr class="linter-header">
+      <tr class="diagnostics-header">
         <th class={severityClass} on={{ click: () => this.setSortMethod("severity") }}>
           Severity{" "}
           {this.sortMethod === "severity" ? (this.sortDirection === "asc" ? "▼" : "▲") : ""}
@@ -552,23 +552,31 @@ class LinterPanel {
           {this.sortMethod === "position" ? (this.sortDirection === "asc" ? "▼" : "▲") : ""}
         </th>
         <th>
-          <span class="linter-header-title">Description</span>
-          <span class="linter-toggles">
+          <span class="diagnostics-header-title">Description</span>
+          <span class="diagnostics-toggles">
             <span
-              class={this.pkg.viewMode === "file" ? "linter-view-tab active" : "linter-view-tab"}
+              class={
+                this.pkg.viewMode === "file"
+                  ? "diagnostics-view-tab active"
+                  : "diagnostics-view-tab"
+              }
               on={{ click: () => this.pkg.setViewMode("file") }}
             >
               File
             </span>
             <span
-              class={this.pkg.viewMode === "project" ? "linter-view-tab active" : "linter-view-tab"}
+              class={
+                this.pkg.viewMode === "project"
+                  ? "diagnostics-view-tab active"
+                  : "diagnostics-view-tab"
+              }
               on={{ click: () => this.pkg.setViewMode("project") }}
             >
               Project
             </span>
             <button
               type="button"
-              class="linter-navigation native-key-bindings icon icon-arrow-left"
+              class="diagnostics-navigation native-key-bindings icon icon-arrow-left"
               title="Previous Diagnostic"
               attributes={{ "aria-label": "Previous Diagnostic" }}
               disabled={navigationDisabled}
@@ -576,7 +584,7 @@ class LinterPanel {
             />
             <button
               type="button"
-              class="linter-navigation native-key-bindings icon icon-arrow-right"
+              class="diagnostics-navigation native-key-bindings icon icon-arrow-right"
               title="Next Diagnostic"
               attributes={{ "aria-label": "Next Diagnostic" }}
               disabled={navigationDisabled}
@@ -584,7 +592,7 @@ class LinterPanel {
             />
             <button
               type="button"
-              class="linter-clear native-key-bindings icon icon-x"
+              class="diagnostics-clear native-key-bindings icon icon-x"
               title="Clear All Diagnostics"
               attributes={{ "aria-label": "Clear All Diagnostics" }}
               disabled={!this.pkg.hub || this.pkg.messages.length === 0 || this._navigating}
@@ -621,7 +629,7 @@ class LinterPanel {
       // A severity outside the model still gets a row: it is listed with its
       // raw name rather than rendering an empty cell.
       const severity = this.pkg.severities.get(message.severity);
-      const scls = severity ? this.pkg.severities.classFor(severity.name) : "linter-severity";
+      const scls = severity ? this.pkg.severities.classFor(severity.name) : "diagnostics-severity";
       const stxt = severity ? severity.label : String(message.severity);
 
       // Build position/file cell content
@@ -632,12 +640,12 @@ class LinterPanel {
         const subject = messageSubject(message);
         const abbrev = this._abbreviatePath(subject);
         positionContent.push(
-          <span class="linter-file-path" title={subject}>
+          <span class="diagnostics-file-path" title={subject}>
             {abbrev}
           </span>,
         );
         positionContent.push(
-          <span class="linter-file-line">
+          <span class="diagnostics-file-line">
             {cell != null ? `[${cell}]:` : ""}
             {message.location.position.start.row + 1}:{message.location.position.start.column + 1}
           </span>,
@@ -660,7 +668,7 @@ class LinterPanel {
             : (message.reference.position?.column ?? 0);
           positionContent.push(
             <a
-              class="linter-log-ref"
+              class="diagnostics-log-ref"
               dataset={{ file: message.reference.file, line: refLine, column: refColumn }}
               title={`Open log at line ${refLine + 1}`}
             >
@@ -674,7 +682,7 @@ class LinterPanel {
       // resolved description, an affordance to resolve a lazy one, and the
       // "more info" link for `url`.
       const descriptionContent = [
-        <span class="linter-excerpt" innerHTML={renderExcerpt(message.excerpt)} />,
+        <span class="diagnostics-excerpt" innerHTML={renderExcerpt(message.excerpt)} />,
       ];
       const description = this.pkg.getDescription(message);
       if (description) {
@@ -682,17 +690,17 @@ class LinterPanel {
         // one line, and `title` carries the full text — a rule code such as
         // "Ruff: F401" is short, related information is not.
         descriptionContent.push(
-          <span class="linter-detail" title={description}>
+          <span class="diagnostics-detail" title={description}>
             {description}
           </span>,
         );
       } else if (this.pkg.hasLazyDescription(message)) {
-        descriptionContent.push(<a class="linter-detail-toggle">details</a>);
+        descriptionContent.push(<a class="diagnostics-detail-toggle">details</a>);
       }
       const moreInfoURL = externalUrl(message.url);
       if (moreInfoURL) {
         descriptionContent.push(
-          <a class="linter-more-info" dataset={{ url: moreInfoURL }} title={moreInfoURL}>
+          <a class="diagnostics-more-info" dataset={{ url: moreInfoURL }} title={moreInfoURL}>
             more info
           </a>,
         );
@@ -702,20 +710,20 @@ class LinterPanel {
         <tr
           // Preserve painted rows when the window moves. A diagnostic key can
           // repeat; the absolute visible index identifies this row's slot.
-          key={`linter-row:${visibleIndex}`}
+          key={`diagnostics-row:${visibleIndex}`}
           class={
-            "linter-row " +
+            "diagnostics-row " +
             (severity ? severity.name : "unknown") +
             (message === this._focusedMessage ? " focused" : "")
           }
           dataset={{ index: i, visibleIndex: visibleIndex }}
         >
           <td class={scls}>{stxt}</td>
-          <td class="linter-provider" title={message.linterName}>
+          <td class="diagnostics-provider" title={message.linterName}>
             {message.linterName}
           </td>
-          <td class="linter-position">{positionContent}</td>
-          <td class="linter-description">{descriptionContent}</td>
+          <td class="diagnostics-position">{positionContent}</td>
+          <td class="diagnostics-description">{descriptionContent}</td>
         </tr>
       );
 
@@ -730,8 +738,8 @@ class LinterPanel {
     if (rowHeight && start > 0) {
       rows.push(
         <tr
-          key="linter-spacer-before"
-          class="linter-spacer"
+          key="diagnostics-spacer-before"
+          class="diagnostics-spacer"
           style={`height: ${start * rowHeight}px`}
         />,
       );
@@ -740,8 +748,8 @@ class LinterPanel {
     if (rowHeight && end < visible.length) {
       rows.push(
         <tr
-          key="linter-spacer-after"
-          class="linter-spacer"
+          key="diagnostics-spacer-after"
+          class="diagnostics-spacer"
           style={`height: ${(visible.length - end) * rowHeight}px`}
         />,
       );
@@ -752,8 +760,8 @@ class LinterPanel {
       // the panel is reached with alt-l or a click, not by tabbing through the
       // window, and 0 puts it in the document's tab order between the editor
       // and whatever comes next.
-      <div class="linter-panel" tabIndex="-1">
-        <table class="linter-table">
+      <div class="diagnostics" tabIndex="-1">
+        <table class="diagnostics-table">
           <thead>{head}</thead>
           <tbody on={{ click: this._onRowClick }}>{rows}</tbody>
         </table>
@@ -762,7 +770,7 @@ class LinterPanel {
   }
 
   getTitle() {
-    return "Linter";
+    return "Diagnostics";
   }
 
   getURI() {
@@ -773,7 +781,7 @@ class LinterPanel {
   // package's `deserializePanel` answers for the name, and the opener it
   // registers answers for the URI.
   serialize() {
-    return { deserializer: "LinterPanel", uri: PANEL_URI };
+    return { deserializer: "Diagnostics", uri: PANEL_URI };
   }
 
   getIconName() {
@@ -918,7 +926,7 @@ class LinterPanel {
   // the same height by construction, so any of them will do.
   _measureRowHeight() {
     if (this._rowHeight) return this._rowHeight;
-    const row = this.element?.querySelector(".linter-row");
+    const row = this.element?.querySelector(".diagnostics-row");
     const height = row?.getBoundingClientRect().height ?? 0;
     if (height > 0) this._rowHeight = height;
     return this._rowHeight;
@@ -977,7 +985,7 @@ class LinterPanel {
     const container = this._scrollContainer();
     const rowHeight = this._measureRowHeight();
     if (!container || !rowHeight || !container.clientHeight) {
-      return { start: 0, end: Math.min(total, LinterPanel.BOOTSTRAP_ROWS) };
+      return { start: 0, end: Math.min(total, Diagnostics.BOOTSTRAP_ROWS) };
     }
 
     const count = Math.ceil(container.clientHeight / rowHeight);
@@ -988,9 +996,9 @@ class LinterPanel {
       Math.max(0, total - count),
       Math.max(0, Math.floor(container.scrollTop / rowHeight)),
     );
-    const block = LinterPanel.BLOCK_ROWS;
-    const start = Math.max(0, Math.floor((first - LinterPanel.OVERSCAN) / block) * block);
-    const end = Math.min(total, Math.ceil((first + count + LinterPanel.OVERSCAN) / block) * block);
+    const block = Diagnostics.BLOCK_ROWS;
+    const start = Math.max(0, Math.floor((first - Diagnostics.OVERSCAN) / block) * block);
+    const end = Math.min(total, Math.ceil((first + count + Diagnostics.OVERSCAN) / block) * block);
     return { start, end };
   }
 
@@ -1088,7 +1096,7 @@ class LinterPanel {
 
   _clearMessages() {
     if (this.destroyed || this._navigating || !this.pkg.hub || !this.pkg.messages.length) return;
-    return lumine.commands.dispatch(this.element, "linter:clear");
+    return this.pkg.clearMessages();
   }
 
   // Enter needs a cursor, jumps to its message, and takes the cursor with it.
@@ -1190,4 +1198,4 @@ function throttle(func, timeout) {
   };
 }
 
-module.exports = { LinterPanel };
+module.exports = { Diagnostics };
