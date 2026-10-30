@@ -763,7 +763,9 @@ class Diagnostics {
       <div class="diagnostics" tabIndex="-1">
         <table class="diagnostics-table">
           <thead>{head}</thead>
-          <tbody on={{ click: this._onRowClick }}>{rows}</tbody>
+          <tbody attributes={{ "data-scrollbar": "auto" }} on={{ click: this._onRowClick }}>
+            {rows}
+          </tbody>
         </table>
       </div>
     );
