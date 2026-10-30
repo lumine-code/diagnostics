@@ -38,6 +38,17 @@ describe("Diagnostics status action menu", () => {
     expect(menu().find((item) => item.command === "diagnostics:file-mode").checked).toBe(false);
     expect(menu().find((item) => item.command === "diagnostics:project-mode").checked).toBe(true);
   });
+  it("gives application-menu aliases the same exclusive mode state", async () => {
+    const state = (command) =>
+      lumine.commands.getCommandState(command, { target: editor.getElement() });
+    expect(state("diagnostics:toggle")).toBeNull();
+    expect(state("diagnostics:toggle-focus")).toBeNull();
+    expect(state("diagnostics:file-mode")).toEqual({ type: "radio", checked: true });
+    expect(state("diagnostics:project-mode")).toEqual({ type: "radio", checked: false });
+    await lumine.commands.dispatch(editor.getElement(), "diagnostics:project-mode");
+    expect(state("diagnostics:file-mode")).toEqual({ type: "radio", checked: false });
+    expect(state("diagnostics:project-mode")).toEqual({ type: "radio", checked: true });
+  });
   it("shows Alt-L only for focusing and navigation shortcuts only while an editor has focus", () => {
     const keys = lumine.keymaps.add("diagnostics-status-editor-shortcuts-spec", {
       "lumine-text-editor:not([mini])": {
