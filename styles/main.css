@@ -58,6 +58,11 @@
   flex-direction: column;
   height: 100%;
   min-height: 0;
+  /* Keep this stationary grid on its own compositor layer. Sharing the
+   * editor's layer makes Chromium rebuild the table's paint chunks during
+   * every smooth-scroll frame, especially with several editor panes. Paint
+   * containment alone does not isolate that layerization work. */
+  transform: translateZ(0);
 
   /* One line of text plus the cell padding below. The panel reads this back to
    * decide which rows to render, so it has to resolve to a pixel length. */
