@@ -38,6 +38,42 @@ describe("Diagnostics status action menu", () => {
     expect(menu().find((item) => item.command === "diagnostics:file-mode").checked).toBe(false);
     expect(menu().find((item) => item.command === "diagnostics:project-mode").checked).toBe(true);
   });
+  it("appends only the focus shortcut to its existing status text and follows keymap overrides", () => {
+    const [tooltip] = lumine.tooltips.findTooltips(tile);
+    const content = () => tooltip.getTooltipElement().querySelector(".tooltip-inner");
+    tooltip.show();
+    expect(content().querySelectorAll(".keystroke").length).toBe(1);
+    expect(content().querySelector(".keystroke").textContent).toBe(
+      process.platform === "darwin" ? "⌥L" : "Alt+L",
+    );
+    expect(content().textContent).toBe(
+      "File diagnostics: no messages. Click to toggle the panel. " +
+        (process.platform === "darwin" ? "⌥L" : "Alt+L"),
+    );
+    expect(content().textContent).not.toContain("Toggle Diagnostics focus");
+    expect(content().querySelector(".tooltip-composite")).toBeNull();
+    tooltip.hide();
+    const keys = lumine.keymaps.add("diagnostics-status-tooltip-spec", {
+      "lumine-workspace": {
+        "alt-l": "unset!",
+        "ctrl-alt-j": "diagnostics:toggle-focus",
+        "ctrl-alt-t": "diagnostics:toggle",
+      },
+    });
+    try {
+      tooltip.show();
+      expect(content().querySelectorAll(".keystroke").length).toBe(1);
+      expect(content().querySelector(".keystroke").textContent).toBe(
+        process.platform === "darwin" ? "⌃⌥J" : "Ctrl+Alt+J",
+      );
+      expect(tile.getAttribute("aria-label")).toBe(
+        "File diagnostics: no messages. Click to toggle the panel.",
+      );
+    } finally {
+      tooltip.hide();
+      keys.dispose();
+    }
+  });
   it("gives application-menu aliases the same exclusive mode state", async () => {
     const state = (command) =>
       lumine.commands.getCommandState(command, { target: editor.getElement() });

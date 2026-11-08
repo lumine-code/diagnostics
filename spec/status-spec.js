@@ -19,7 +19,12 @@ describe("lib/status", () => {
     status.counters
       .filter(({ severity }) => !isHidden(severity.name))
       .map(({ severity }) => severity.name);
-  const tooltipTitle = () => lumine.tooltips.findTooltips(status.element)[0].getTitle();
+  const tooltipTitle = (element = status.element) => {
+    const content = document.createElement("div");
+    content.innerHTML = lumine.tooltips.findTooltips(element)[0].getTitle();
+    content.querySelector(".key-bindings")?.remove();
+    return content.textContent.trim();
+  };
 
   beforeEach(() => {
     messages = [];
@@ -94,8 +99,9 @@ describe("lib/status", () => {
     expect(noEditorStatus.stateIcon.hidden).toBe(false);
     expect(noEditorStatus.stateIcon.classList).toContain("icon-checklist");
     expect(noEditorStatus.element.classList).toContain("diagnostics-status-unavailable");
-    const [tooltip] = lumine.tooltips.findTooltips(noEditorStatus.element);
-    expect(tooltip.getTitle()).toBe("Diagnostics unavailable. Click to toggle the panel.");
+    expect(tooltipTitle(noEditorStatus.element)).toBe(
+      "Diagnostics unavailable. Click to toggle the panel.",
+    );
 
     noEditorStatus.setEditor({});
     noEditorStatus.setEditor(null);

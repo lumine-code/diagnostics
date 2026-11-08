@@ -329,7 +329,33 @@ describe("lib/diagnostics", () => {
         "input-label hint",
       ]);
       expect(labels.every((label) => label.querySelector("input").checked)).toBe(true);
-      expect(labels[3].title).toBe("Toggle Hint messages");
+      expect(lumine.tooltips.findTooltips(labels[3])[0].getTitle()).toBe("Toggle Hint messages");
+      expect(labels[3].title).toBe("");
+      expect(labels[3].querySelector("input").getAttribute("aria-label")).toBe(
+        "Toggle Hint messages",
+      );
+    });
+
+    it("reuses native header tooltips through updates and disposes removed controls and the panel", async () => {
+      const navigation = panel.element.querySelector(".diagnostics-navigation");
+      const [tooltip] = lumine.tooltips.findTooltips(navigation);
+      expect(tooltip.getTitle()).toBe("Previous Diagnostic");
+      await publish(["warning", "error"]);
+      await panel.update();
+      expect(lumine.tooltips.findTooltips(navigation)).toEqual([tooltip]);
+
+      const filters = Array.from(panel.element.querySelectorAll(".input-label"));
+      const removed = filters.at(-1);
+      const hub = fakeHub({ messages: () => messages });
+      hub.getSeverities = () => front.severities.records.slice(0, -1);
+      front.attach(hub);
+      await panel.update();
+      expect(lumine.tooltips.findTooltips(removed)).toEqual([]);
+      expect(lumine.tooltips.findTooltips(navigation)).toEqual([tooltip]);
+
+      await panel.destroy();
+      expect(lumine.tooltips.findTooltips(navigation)).toEqual([]);
+      panel = {};
     });
 
     it("hides only the severity that was toggled off", async () => {

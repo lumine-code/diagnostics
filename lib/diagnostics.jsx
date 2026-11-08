@@ -57,10 +57,12 @@ class Diagnostics {
     this._navigationMessage = null;
     this._navigating = false;
     this.destroyed = false;
+    this._headerTooltips = new Map();
     // Bind row click handler once for event delegation
     this._onRowClick = this._onRowClick.bind(this);
     this._onRowMiddleClick = this._onRowMiddleClick.bind(this);
     etch.initialize(this);
+    this._syncHeaderTooltips();
 
     // Prevent browser auto-scroll on middle-click
     this.element.addEventListener("mousedown", (e) => {
@@ -456,6 +458,8 @@ class Diagnostics {
 
   destroy() {
     this.destroyed = true;
+    for (const tooltip of this._headerTooltips.values()) tooltip.dispose();
+    this._headerTooltips.clear();
     if (this.cwatch) {
       this.cwatch.dispose();
       this.cwatch = null;
@@ -497,8 +501,26 @@ class Diagnostics {
   }
 
   readAfterUpdate() {
+    this._syncHeaderTooltips();
     this._updateCurrentRowHighlight();
     this._observeRow();
+  }
+
+  _syncHeaderTooltips() {
+    if (this.destroyed || !this.element) return;
+    const controls = new Set(this.element.querySelectorAll(".diagnostics-toggles [data-tooltip]"));
+    for (const [element, tooltip] of this._headerTooltips) {
+      if (controls.has(element)) continue;
+      tooltip.dispose();
+      this._headerTooltips.delete(element);
+    }
+    for (const element of controls) {
+      if (this._headerTooltips.has(element)) continue;
+      this._headerTooltips.set(
+        element,
+        lumine.tooltips.add(element, { html: false, title: () => element.dataset.tooltip }),
+      );
+    }
   }
 
   setSortMethod(method) {
@@ -585,6 +607,7 @@ class Diagnostics {
                   ? "diagnostics-view-tab active"
                   : "diagnostics-view-tab"
               }
+              dataset={{ tooltip: "Show diagnostics for the active file" }}
               on={{ click: () => this.pkg.setViewMode("file") }}
             >
               File
@@ -595,6 +618,7 @@ class Diagnostics {
                   ? "diagnostics-view-tab active"
                   : "diagnostics-view-tab"
               }
+              dataset={{ tooltip: "Show diagnostics for the whole project" }}
               on={{ click: () => this.pkg.setViewMode("project") }}
             >
               Project
@@ -602,7 +626,7 @@ class Diagnostics {
             <button
               type="button"
               class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-left"
-              title="Previous Diagnostic"
+              dataset={{ tooltip: "Previous Diagnostic" }}
               attributes={{ "aria-label": "Previous Diagnostic" }}
               disabled={navigationDisabled}
               on={{ click: () => this._navigateMessage(-1) }}
@@ -610,7 +634,7 @@ class Diagnostics {
             <button
               type="button"
               class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-right"
-              title="Next Diagnostic"
+              dataset={{ tooltip: "Next Diagnostic" }}
               attributes={{ "aria-label": "Next Diagnostic" }}
               disabled={navigationDisabled}
               on={{ click: () => this._navigateMessage(1) }}
@@ -618,7 +642,7 @@ class Diagnostics {
             <button
               type="button"
               class="diagnostics-clear data-table-header-action native-key-bindings icon icon-x"
-              title="Clear All Diagnostics"
+              dataset={{ tooltip: "Clear All Diagnostics" }}
               attributes={{ "aria-label": "Clear All Diagnostics" }}
               disabled={!this.pkg.hub || this.pkg.messages.length === 0 || this._navigating}
               on={{ click: () => this._clearMessages() }}
@@ -626,12 +650,13 @@ class Diagnostics {
             {this.pkg.severities.records.map((severity) => (
               <label
                 class={`input-label ${severity.name}`}
-                title={`Toggle ${severity.label} messages`}
+                dataset={{ tooltip: `Toggle ${severity.label} messages` }}
               >
                 <input
                   class="input-toggle"
                   type="checkbox"
                   checked={this.isSeverityVisible(severity.name)}
+                  attributes={{ "aria-label": `Toggle ${severity.label} messages` }}
                   on={{ change: () => this.toggleVisibility(severity.name) }}
                 />
               </label>
