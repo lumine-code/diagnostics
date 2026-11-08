@@ -94,14 +94,20 @@ class Diagnostics {
     if (scrollContainer) {
       scrollContainer.addEventListener("scroll", this._onScroll, { passive: true });
 
-      // The viewport height decides how many rows are wanted, and the row height
-      // is an em, so both move when the dock is resized or the font changes.
-      // Drop the measurement so the next one is taken against the new layout.
+      // Theme density can resize a row without resizing the viewport. Watch a
+      // rendered row too, and rebuild the spacers whenever its height changes.
       this._resizeObserver = new ResizeObserver(() => {
+        const previousHeight = this._rowHeight;
         this._rowHeight = 0;
-        this._onScroll();
+        const rowHeight = this._measureRowHeight();
+        if (rowHeight && rowHeight !== previousHeight) {
+          this.update();
+        } else {
+          this._onScroll();
+        }
       });
       this._resizeObserver.observe(scrollContainer);
+      this._observeRow();
     }
 
     // Register context menu and keyboard navigation commands
@@ -136,10 +142,12 @@ class Diagnostics {
           this._moveFocusDown();
         },
         "core:confirm": (e) => {
+          if (e.target.closest?.(".data-table-sort")) return;
           e.stopPropagation();
           return this._confirmFocused();
         },
         "core:cancel": (e) => {
+          if (e.target.closest?.(".data-table-sort")) return;
           e.stopPropagation();
           this._cancelFocus();
         },
@@ -490,6 +498,7 @@ class Diagnostics {
 
   readAfterUpdate() {
     this._updateCurrentRowHighlight();
+    this._observeRow();
   }
 
   setSortMethod(method) {
@@ -519,39 +528,55 @@ class Diagnostics {
   render() {
     const isProject = this.pkg.viewMode === "project";
     // Keep sorting lazy while the dock is hidden, including for button state.
-    const visible = this._isOnScreen() ? this._visibleMessages() : [];
+    const onScreen = this._isOnScreen();
+    const visible = onScreen ? this._visibleMessages() : [];
     const navigationDisabled = visible.length === 0 || this._navigating;
-
-    const severityClass =
-      this.sortMethod === "severity"
-        ? "diagnostics-header-sortable diagnostics-header-active"
-        : "diagnostics-header-sortable";
-    const providerClass =
-      this.sortMethod === "provider"
-        ? "diagnostics-header-sortable diagnostics-header-active"
-        : "diagnostics-header-sortable";
+    const empty = onScreen && visible.length === 0;
+    const emptyMessage =
+      empty && this._getMessages().length
+        ? "No diagnostics match the selected filters"
+        : isProject
+          ? "No diagnostics in the project"
+          : "No diagnostics in the active file";
 
     const thirdLabel = isProject ? "File" : "Position";
-    const thirdClass =
-      this.sortMethod === "position"
-        ? "diagnostics-header-sortable diagnostics-header-active"
-        : "diagnostics-header-sortable";
+    const sortState = (method) =>
+      this.sortMethod === method
+        ? this.sortDirection === "asc"
+          ? "ascending"
+          : "descending"
+        : "none";
 
     const head = (
       <tr class="diagnostics-header">
-        <th class={severityClass} on={{ click: () => this.setSortMethod("severity") }}>
-          Severity{" "}
-          {this.sortMethod === "severity" ? (this.sortDirection === "asc" ? "▼" : "▲") : ""}
+        <th attributes={{ scope: "col", "aria-sort": sortState("severity") }}>
+          <button
+            type="button"
+            class="data-table-sort native-key-bindings"
+            on={{ click: () => this.setSortMethod("severity") }}
+          >
+            <span class="data-table-sort-label">Severity</span>
+          </button>
         </th>
-        <th class={providerClass} on={{ click: () => this.setSortMethod("provider") }}>
-          Provider{" "}
-          {this.sortMethod === "provider" ? (this.sortDirection === "asc" ? "▼" : "▲") : ""}
+        <th attributes={{ scope: "col", "aria-sort": sortState("provider") }}>
+          <button
+            type="button"
+            class="data-table-sort native-key-bindings"
+            on={{ click: () => this.setSortMethod("provider") }}
+          >
+            <span class="data-table-sort-label">Provider</span>
+          </button>
         </th>
-        <th class={thirdClass} on={{ click: () => this.setSortMethod("position") }}>
-          {thirdLabel}{" "}
-          {this.sortMethod === "position" ? (this.sortDirection === "asc" ? "▼" : "▲") : ""}
+        <th attributes={{ scope: "col", "aria-sort": sortState("position") }}>
+          <button
+            type="button"
+            class="data-table-sort native-key-bindings"
+            on={{ click: () => this.setSortMethod("position") }}
+          >
+            <span class="data-table-sort-label">{thirdLabel}</span>
+          </button>
         </th>
-        <th>
+        <th attributes={{ scope: "col" }}>
           <span class="diagnostics-header-title">Description</span>
           <span class="diagnostics-toggles">
             <span
@@ -576,7 +601,7 @@ class Diagnostics {
             </span>
             <button
               type="button"
-              class="diagnostics-navigation native-key-bindings icon icon-arrow-left"
+              class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-left"
               title="Previous Diagnostic"
               attributes={{ "aria-label": "Previous Diagnostic" }}
               disabled={navigationDisabled}
@@ -584,7 +609,7 @@ class Diagnostics {
             />
             <button
               type="button"
-              class="diagnostics-navigation native-key-bindings icon icon-arrow-right"
+              class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-right"
               title="Next Diagnostic"
               attributes={{ "aria-label": "Next Diagnostic" }}
               disabled={navigationDisabled}
@@ -592,7 +617,7 @@ class Diagnostics {
             />
             <button
               type="button"
-              class="diagnostics-clear native-key-bindings icon icon-x"
+              class="diagnostics-clear data-table-header-action native-key-bindings icon icon-x"
               title="Clear All Diagnostics"
               attributes={{ "aria-label": "Clear All Diagnostics" }}
               disabled={!this.pkg.hub || this.pkg.messages.length === 0 || this._navigating}
@@ -712,7 +737,7 @@ class Diagnostics {
           // repeat; the absolute visible index identifies this row's slot.
           key={`diagnostics-row:${visibleIndex}`}
           class={
-            "diagnostics-row " +
+            "diagnostics-row data-table-row " +
             (severity ? severity.name : "unknown") +
             (message === this._focusedMessage ? " focused" : "")
           }
@@ -760,13 +785,22 @@ class Diagnostics {
       // the panel is reached with alt-l or a click, not by tabbing through the
       // window, and 0 puts it in the document's tab order between the editor
       // and whatever comes next.
-      <div class="diagnostics tab-content-separated" tabIndex="-1">
-        <table class="diagnostics-table">
+      <div class="diagnostics tab-content-separated data-table-container" tabIndex="-1">
+        <table class={`diagnostics-table data-table${empty ? " is-empty" : ""}`}>
           <thead>{head}</thead>
           <tbody attributes={{ "data-scrollbar": "auto" }} on={{ click: this._onRowClick }}>
             {rows}
           </tbody>
         </table>
+        {empty ? (
+          <div class="panel-empty-state">
+            <background-tips>
+              <ul class="centered background-message">
+                <li>{emptyMessage}</li>
+              </ul>
+            </background-tips>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -845,9 +879,9 @@ class Diagnostics {
     const rowBottom = rowTop + rowHeight;
 
     if (rowTop < container.scrollTop) {
-      container.scrollTop = rowTop;
+      container.scrollTop = Math.floor(rowTop);
     } else if (rowBottom > container.scrollTop + container.clientHeight) {
-      container.scrollTop = rowBottom - container.clientHeight;
+      container.scrollTop = Math.ceil(rowBottom - container.clientHeight);
     }
   }
 
@@ -932,6 +966,15 @@ class Diagnostics {
     const height = row?.getBoundingClientRect().height ?? 0;
     if (height > 0) this._rowHeight = height;
     return this._rowHeight;
+  }
+
+  _observeRow() {
+    if (!this._resizeObserver) return;
+    const row = this.element?.querySelector(".diagnostics-row") ?? null;
+    if (row === this._observedRow) return;
+    if (this._observedRow) this._resizeObserver.unobserve(this._observedRow);
+    this._observedRow = row;
+    if (row) this._resizeObserver.observe(row);
   }
 
   // Extra rows rendered above and below the viewport, so a scroll of a row or

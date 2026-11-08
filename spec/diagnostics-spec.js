@@ -1,6 +1,8 @@
 const { Diagnostics } = require("../lib/diagnostics");
 const { Front } = require("../lib/front");
 const { normalize, fakeHub } = require("./fake-hub");
+const path = require("node:path");
+const { ipcRenderer } = require("electron");
 
 // The panel header, the severity filter and the severity sort are all driven by
 // the severity vocabulary the hub hands over. These specs pin the
@@ -59,6 +61,60 @@ describe("lib/diagnostics", () => {
   it("keeps the panel in the bottom dock", () => {
     expect(panel.getDefaultLocation()).toBe("bottom");
     expect(panel.getAllowedLocations()).toEqual(["bottom"]);
+  });
+
+  describe("the empty body", () => {
+    const emptyMessage = () =>
+      panel.element.querySelector(".panel-empty-state .background-message li")?.textContent;
+
+    it("keeps the header and replaces the empty body as diagnostics arrive and clear", async () => {
+      const header = panel.element.querySelector("thead");
+      expect(emptyMessage()).toBe("No diagnostics in the active file");
+      expect(header.contains(panel.element.querySelector(".panel-empty-state"))).toBeFalse();
+
+      await publish(["warning"]);
+      expect(emptyMessage()).toBeUndefined();
+      expect(rowsInOrder()).toEqual(["Warning"]);
+
+      await publish([]);
+      expect(emptyMessage()).toBe("No diagnostics in the active file");
+      expect(panel.element.querySelector("thead")).toBe(header);
+      expect(header.querySelector(".data-table-sort").disabled).toBeFalse();
+    });
+
+    it("distinguishes filtered messages from a scope that has no diagnostics", async () => {
+      await publish(["warning"]);
+      panel.toggleVisibility("warning");
+      await panel.update();
+      expect(emptyMessage()).toBe("No diagnostics match the selected filters");
+
+      panel.toggleVisibility("warning");
+      await panel.update();
+      expect(emptyMessage()).toBeUndefined();
+
+      front.hub.getCurrentMessages = () => [];
+      await panel.update();
+      expect(emptyMessage()).toBe("No diagnostics in the active file");
+      front.setViewMode("project");
+      await panel.update();
+      expect(emptyMessage()).toBeUndefined();
+
+      await publish([]);
+      expect(emptyMessage()).toBe("No diagnostics in the project");
+    });
+
+    it("does not mistake an off-screen render window for an empty diagnostic set", async () => {
+      await publish(["error"]);
+      panel.element.style.display = "none";
+      await panel.update();
+      expect(rowsInOrder()).toEqual([]);
+      expect(emptyMessage()).toBeUndefined();
+
+      panel.element.style.display = "";
+      await panel.update();
+      expect(rowsInOrder()).toEqual(["Error"]);
+      expect(emptyMessage()).toBeUndefined();
+    });
   });
 
   describe("the keyboard cursor", () => {
@@ -310,6 +366,96 @@ describe("lib/diagnostics", () => {
     });
   });
 
+  describe("the sortable table headers", () => {
+    const headers = () => Array.from(panel.element.querySelectorAll("thead th"));
+
+    it("exposes the active direction and sorts a new column ascending first", async () => {
+      await publish(["warning", "error"]);
+      expect(headers().map((header) => header.getAttribute("scope"))).toEqual([
+        "col",
+        "col",
+        "col",
+        "col",
+      ]);
+      expect(headers().map((header) => header.getAttribute("aria-sort"))).toEqual([
+        "ascending",
+        "none",
+        "none",
+        null,
+      ]);
+
+      const position = headers()[2].querySelector("button");
+      position.click();
+      await panel.update();
+      expect(headers()[2].getAttribute("aria-sort")).toBe("ascending");
+      expect(rowsInOrder()).toEqual(["Warning", "Error"]);
+      position.click();
+      await panel.update();
+      expect(headers()[2].getAttribute("aria-sort")).toBe("descending");
+      expect(rowsInOrder()).toEqual(["Error", "Warning"]);
+      expect(headers()[0].getAttribute("aria-sort")).toBe("none");
+      expect(headers()[3].querySelector(".data-table-sort")).toBeNull();
+    });
+
+    it("keeps header commands from confirming or cancelling a diagnostic row", async () => {
+      await publish(["warning", "error"]);
+      panel._moveFocus(1);
+      await panel.update();
+      const button = headers()[0].querySelector("button");
+      const confirm = spyOn(panel, "_confirmFocused");
+      const cancel = spyOn(panel, "_cancelFocus");
+
+      lumine.commands.dispatch(button, "core:confirm");
+      lumine.commands.dispatch(button, "core:cancel");
+      expect(confirm).not.toHaveBeenCalled();
+      expect(cancel).not.toHaveBeenCalled();
+
+      lumine.commands.dispatch(panel.element, "core:confirm");
+      lumine.commands.dispatch(panel.element, "core:cancel");
+      expect(confirm).toHaveBeenCalledTimes(1);
+      expect(cancel).toHaveBeenCalledTimes(1);
+    });
+
+    jasmine.itWithDocumentFocus(
+      "sorts with native Enter and keeps focus on the header",
+      async () => {
+        jasmine.useRealClock();
+        const bindings = [
+          lumine.keymaps.add(
+            "diagnostics-sort-core-spec",
+            lumine.keymaps.readKeymap(
+              path.join(lumine.application.getResourcePath(), "keymaps", "base.json"),
+            ),
+          ),
+          lumine.keymaps.add(
+            "diagnostics-sort-panel-spec",
+            lumine.keymaps.readKeymap(require.resolve("../keymaps/main.jsonc")),
+          ),
+        ];
+        try {
+          await publish(["warning", "error"]);
+          const button = headers()[2].querySelector("button");
+          const confirm = spyOn(panel, "_confirmFocused");
+          button.focus();
+
+          for (const type of ["keyDown", "char", "keyUp"]) {
+            await ipcRenderer.invoke("lumine:window", "sendInputEvent", {
+              type,
+              keyCode: "Enter",
+            });
+          }
+          await conditionPromise(() => headers()[2].getAttribute("aria-sort") === "ascending");
+
+          expect(rowsInOrder()).toEqual(["Warning", "Error"]);
+          expect(document.activeElement).toBe(button);
+          expect(confirm).not.toHaveBeenCalled();
+        } finally {
+          bindings.forEach((binding) => binding.dispose());
+        }
+      },
+    );
+  });
+
   // The description cell used to render the excerpt and nothing else, so
   // `Message.description` and `Message.url` — where a language server puts its
   // rule code and its documentation link — never reached the panel at all.
@@ -403,7 +549,7 @@ describe("lib/diagnostics", () => {
   it("labels a row of unknown severity with its raw name, not undefined", async () => {
     await publish(["boom"]);
     const row = panel.element.querySelector(".diagnostics-row");
-    expect(row.className).toBe("diagnostics-row unknown");
+    expect(row.classList.contains("unknown")).toBe(true);
     expect(row.querySelector(".diagnostics-severity").textContent).toBe("boom");
   });
 
@@ -467,6 +613,42 @@ describe("lib/diagnostics", () => {
       spyOn(row, "getBoundingClientRect").and.returnValue({ ...bounds, height: 25.375 });
 
       expect(panel._measureRowHeight()).toBe(25.375);
+    });
+
+    it("rebuilds virtual spacers when the theme changes row height alone", async () => {
+      const table = panel.element.querySelector("table");
+      const previousHeight = panel._rowHeight;
+      const height = previousHeight + 9;
+      table.style.setProperty("--data-grid-row-height", `${height}px`);
+
+      await conditionPromise(() => panel._rowHeight === height);
+      await panel.update();
+
+      expect(rows()[0].getBoundingClientRect().height).toBe(height);
+      expect(Math.abs(scrollContainer().scrollHeight - TOTAL * height)).toBeLessThan(height);
+      scrollContainer().scrollTop = 4000 * height;
+      await panel.update();
+      expect(renderedIndices()).toContain(4000);
+      expect(rows().length).toBeLessThan(200);
+    });
+
+    it("grows virtual rows with the UI font when the theme's minimum is smaller", async () => {
+      const table = panel.element.querySelector("table");
+      table.style.setProperty("--ui-font-size", "20px");
+      table.style.setProperty("--ui-spacing", "10px");
+      table.style.setProperty("--data-grid-row-height", "24px");
+
+      await conditionPromise(() => panel._rowHeight >= 35);
+      await panel.update();
+
+      const row = rows()[0];
+      const cell = row.querySelector("td");
+      const height = row.getBoundingClientRect().height;
+      expect(height).toBeGreaterThanOrEqual(35);
+      expect(getComputedStyle(cell).fontSize).toBe("20px");
+      expect(cell.scrollHeight).toBeLessThanOrEqual(cell.clientHeight);
+      expect(Math.abs(scrollContainer().scrollHeight - TOTAL * height)).toBeLessThan(height);
+      expect(rows().length).toBeLessThan(200);
     });
 
     it("keeps a render window inside a list that shrinks below its old scroll position", async () => {

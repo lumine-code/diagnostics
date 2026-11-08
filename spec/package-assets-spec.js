@@ -77,11 +77,6 @@ describe("diagnostics package assets", () => {
     expect(css).not.toContain(".diagnostics-hover");
   });
 
-  it("resolves the row height to a length, because the panel reads it back", () => {
-    const css = read("styles/main.css");
-    expect(css).toMatch(/--diagnostics-row-height:\s*[\d.]+(em|px|rem)/);
-  });
-
   it("is named `diagnostics` and declares the seam it lives on", () => {
     const pkg = JSON.parse(read("package.json"));
     expect(pkg.name).toBe("diagnostics");

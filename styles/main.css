@@ -64,10 +64,6 @@
    * containment alone does not isolate that layerization work. */
   transform: translateZ(0);
 
-  /* One line of text plus the cell padding below. The panel reads this back to
-   * decide which rows to render, so it has to resolve to a pixel length. */
-  --diagnostics-row-height: 2.1em;
-
   .diagnostics-table {
     width: 100%;
     height: 100%;
@@ -75,9 +71,17 @@
     flex-direction: column;
     table-layout: fixed;
 
+    &.is-empty {
+      height: auto;
+      flex: 0 0 auto;
+
+      > tbody {
+        display: none;
+      }
+    }
+
     > thead {
       z-index: 3;
-      background-color: var(--background-color-highlight);
       flex: 0 0 auto;
     }
 
@@ -104,14 +108,9 @@
       display: block;
     }
 
-    border: unset;
-
     th,
     td {
       min-width: 0;
-      padding: 0.3em 0.5em;
-      border: 1px solid var(--base-border-color);
-      border-top: 1px;
       p {
         margin-bottom: unset;
       }
@@ -126,7 +125,7 @@
     }
 
     .diagnostics-header-title {
-      padding: 0.3em 0.5em;
+      padding: var(--data-table-cell-padding-block) var(--data-table-cell-padding-inline);
       display: flex;
       align-items: center;
       /* Yields to the toggle strip, which is a fixed set of small fixed-width
@@ -137,21 +136,6 @@
       overflow: hidden;
       white-space: nowrap;
       text-overflow: ellipsis;
-    }
-
-    .diagnostics-header-sortable {
-      white-space: nowrap;
-      user-select: none;
-      transition: background-color 0.2s ease;
-
-      &:hover {
-        background-color: rgb(from var(--text-color-highlight) r g b / 0.1);
-      }
-
-      &.diagnostics-header-active {
-        font-weight: bold;
-        background-color: rgb(from var(--text-color-highlight) r g b / 0.15);
-      }
     }
 
     /* Core defines .text-error, .text-warning and .text-info as utility
@@ -174,10 +158,6 @@
         user-select: none;
         color: var(--text-color-subtle);
         border-left: 1px solid var(--base-border-color);
-        transition:
-          background-color 0.2s,
-          color 0.15s ease;
-
         &:hover {
           color: var(--text-color-highlight);
           background-color: rgb(from var(--text-color-highlight) r g b / 0.1);
@@ -186,42 +166,6 @@
         &.active {
           color: var(--text-color-highlight);
           font-weight: bold;
-        }
-      }
-
-      .diagnostics-navigation,
-      .diagnostics-clear {
-        font: inherit;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex: 0 0 auto;
-        width: 2em;
-        padding: 0;
-        border: 0;
-        border-left: 1px solid var(--base-border-color);
-        border-radius: 0;
-        background: transparent;
-        color: var(--text-color);
-        cursor: default;
-
-        &::before {
-          margin: 0;
-          width: auto;
-        }
-
-        &:hover:not(:disabled) {
-          background-color: rgb(from var(--text-color-highlight) r g b / 0.1);
-        }
-
-        &:focus-visible {
-          outline: 1px solid var(--text-color-highlight);
-          outline-offset: -2px;
-        }
-
-        &:disabled {
-          color: var(--text-color-subtle);
-          opacity: 0.5;
         }
       }
 
@@ -238,8 +182,6 @@
         cursor: default;
         border-left: 1px solid var(--base-border-color);
         font-size: 0.9em;
-        transition: background-color 0.2s;
-
         input {
           display: none;
         }
@@ -304,10 +246,6 @@
         border-radius: 3px;
         cursor: pointer;
         text-decoration: none;
-        transition:
-          background-color 0.15s ease,
-          color 0.15s ease;
-
         &:hover {
           color: var(--text-color-highlight);
           background-color: var(--background-color-highlight);
@@ -365,10 +303,6 @@
         border-radius: 3px;
         text-decoration: none;
         white-space: nowrap;
-        transition:
-          background-color 0.15s ease,
-          color 0.15s ease;
-
         &:hover {
           color: var(--text-color-highlight);
           background-color: var(--background-color-highlight);
@@ -399,76 +333,33 @@
       /* Every row is exactly this tall, and the panel reads the value back to
        * work out which rows the viewport is showing. Change it here and the
        * arithmetic follows; hard-code a height anywhere else and it will not. */
-      height: var(--diagnostics-row-height);
+      height: var(--diagnostics-row-height, var(--data-table-row-height));
       grid-template-rows: minmax(0, 1fr);
       box-sizing: border-box;
       overflow: hidden;
 
       > td {
+        height: auto;
         min-height: 0;
         overflow: hidden;
         white-space: nowrap;
         text-overflow: ellipsis;
       }
 
-      /* Transparent by default so a row of unknown severity still gets neutral
-       * hover feedback: rgb(from transparent r g b / 0.08) is a faint black. */
-      --diagnostics-severity-background: transparent;
-      transition: background-color 0.15s ease-out;
-      cursor: default;
-
       &.error {
-        --diagnostics-severity-background: var(--background-color-error);
+        --data-table-row-tint: var(--background-color-error);
       }
       &.warning {
-        --diagnostics-severity-background: var(--background-color-warning);
+        --data-table-row-tint: var(--background-color-warning);
       }
       &.info {
-        --diagnostics-severity-background: var(--background-color-info);
+        --data-table-row-tint: var(--background-color-info);
       }
       /* Hints tint from the text colour, not a background colour: they have no
        * saturated background token, by design. */
       &.hint {
-        --diagnostics-severity-background: var(--text-color-hint);
-      }
-
-      &:hover {
-        background-color: rgb(from var(--diagnostics-severity-background) r g b / 0.08);
-      }
-
-      &.current {
-        background-color: rgb(from var(--diagnostics-severity-background) r g b / 0.25);
-
-        &:hover {
-          background-color: rgb(from var(--diagnostics-severity-background) r g b / 0.3);
-        }
+        --data-table-row-tint: var(--text-color-hint);
       }
     }
-  }
-
-  &:focus-within {
-    .diagnostics-table {
-      .diagnostics-row.focused {
-        outline: 1px dotted var(--text-color-highlight);
-        outline-offset: -2px;
-      }
-    }
-  }
-}
-
-/* Respect reduced motion while retaining visible status indicators. */
-@media (prefers-reduced-motion: reduce) {
-  .diagnostics
-    .diagnostics-table
-    :is(
-      .diagnostics-header-sortable,
-      .diagnostics-row,
-      .diagnostics-position .diagnostics-log-ref,
-      .diagnostics-description .diagnostics-detail-toggle,
-      .diagnostics-description .diagnostics-more-info,
-      .diagnostics-toggles .diagnostics-view-tab,
-      .diagnostics-toggles .input-label
-    ) {
-    transition: none;
   }
 }
