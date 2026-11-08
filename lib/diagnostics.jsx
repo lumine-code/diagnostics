@@ -813,7 +813,11 @@ class Diagnostics {
       <div class="diagnostics tab-content-separated data-table-container" tabIndex="-1">
         <table class={`diagnostics-table data-table${empty ? " is-empty" : ""}`}>
           <thead>{head}</thead>
-          <tbody attributes={{ "data-scrollbar": "auto" }} on={{ click: this._onRowClick }}>
+          <tbody
+            ref="scrollport"
+            attributes={{ "data-scrollbar": "auto" }}
+            on={{ click: this._onRowClick }}
+          >
             {rows}
           </tbody>
         </table>
@@ -1095,6 +1099,7 @@ class Diagnostics {
   _moveFocus(delta) {
     const visible = this._visibleMessages();
     if (!visible.length) return;
+    lumine.scrollbars.reveal(this.refs.scrollport);
     const clamp = (index) => Math.min(visible.length - 1, Math.max(0, index));
     const focusedIndex = this._visibleCache.messageIndices.get(this._focusedMessage) ?? -1;
     let index;
