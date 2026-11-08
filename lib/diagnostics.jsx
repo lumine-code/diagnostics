@@ -760,7 +760,7 @@ class Diagnostics {
       // the panel is reached with alt-l or a click, not by tabbing through the
       // window, and 0 puts it in the document's tab order between the editor
       // and whatever comes next.
-      <div class="diagnostics" tabIndex="-1">
+      <div class="diagnostics tab-content-separated" tabIndex="-1">
         <table class="diagnostics-table">
           <thead>{head}</thead>
           <tbody attributes={{ "data-scrollbar": "auto" }} on={{ click: this._onRowClick }}>
