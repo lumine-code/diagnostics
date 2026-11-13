@@ -1179,6 +1179,7 @@ class Diagnostics {
     this._visibleMessages();
     const message = this._focusedMessage;
     if (!message) return;
+    lumine.scrollbars.reveal(this.refs.scrollport);
     this._navigationMessage = null;
     this._setFocusedMessage(null);
     if (this.pkg.viewMode === "project") {

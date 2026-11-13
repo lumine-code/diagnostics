@@ -172,6 +172,40 @@ describe("lib/diagnostics", () => {
       expect(focusedRows()).toBe(0);
     });
 
+    it("reveals the actual scrollport once when a focused row is confirmed without scrolling", async () => {
+      await publish(["error", "warning"]);
+      panel._setFocusedMessage(messages[0]);
+      await panel.update();
+      const scrollport = panel.refs.scrollport;
+      const position = [scrollport.scrollTop, scrollport.scrollLeft];
+      const reveal = spyOn(lumine.scrollbars, "reveal");
+      const navigate = spyOn(front, "revealMessage");
+
+      await lumine.commands.dispatch(panel.element, "core:confirm");
+      await panel.update();
+
+      expect(navigate).toHaveBeenCalledOnceWith(messages[0]);
+      expect(reveal).toHaveBeenCalledOnceWith(scrollport);
+      expect([scrollport.scrollTop, scrollport.scrollLeft]).toEqual(position);
+    });
+
+    it("does not reveal for an unfocused confirmation, a table header, or sorting", async () => {
+      await publish(["error", "warning"]);
+      const reveal = spyOn(lumine.scrollbars, "reveal");
+      const navigate = spyOn(front, "revealMessage");
+
+      await lumine.commands.dispatch(panel.element, "core:confirm");
+      panel._setFocusedMessage(messages[0]);
+      await panel.update();
+      const header = panel.element.querySelector(".data-table-sort");
+      await lumine.commands.dispatch(header, "core:confirm");
+      header.click();
+      await panel.update();
+
+      expect(navigate).not.toHaveBeenCalled();
+      expect(reveal).not.toHaveBeenCalled();
+    });
+
     it("leaving the panel drops the cursor", async () => {
       await publish(["error", "warning"]);
       panel._moveFocus(1);
