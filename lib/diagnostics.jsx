@@ -1158,6 +1158,7 @@ class Diagnostics {
       const target = this._navigationMessage;
       const targetIndex = this._visibleCache.messageIndices.get(target);
       if (targetIndex === undefined) return;
+      lumine.scrollbars.reveal(this.refs.scrollport);
       this._scrollIndexIntoView(targetIndex);
       if (viewMode === "project") {
         return await this._openMessage(target);

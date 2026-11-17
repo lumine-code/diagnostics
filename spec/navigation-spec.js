@@ -83,12 +83,14 @@ describe("Panel diagnostic navigation", () => {
 
   it("does nothing when navigation is called on an empty or fully filtered list", async () => {
     const reveal = spyOn(front, "revealMessage");
+    const scrollbar = spyOn(lumine.scrollbars, "reveal");
     await panel._navigateMessage(1);
     await publish([diagnostic("one")]);
     panel.toggleVisibility("warning");
     await panel.update();
     await panel._navigateMessage(-1);
     expect(reveal).not.toHaveBeenCalled();
+    expect(scrollbar).not.toHaveBeenCalled();
     expect(buttons().every((button) => button.disabled)).toBe(true);
 
     panel.toggleVisibility("warning");
@@ -96,6 +98,33 @@ describe("Panel diagnostic navigation", () => {
     expect(buttons().every((button) => !button.disabled)).toBe(true);
     await panel._navigateMessage(1);
     expect(reveal).toHaveBeenCalledOnceWith(messages[0]);
+    expect(scrollbar).toHaveBeenCalledOnceWith(panel.refs.scrollport);
+  });
+
+  it("reveals its exact scrollport once for previous and next on an already visible single row", async () => {
+    await publish([diagnostic("only")]);
+    const scrollport = panel.refs.scrollport;
+    const position = [scrollport.scrollTop, scrollport.scrollLeft];
+    const scrollbar = spyOn(lumine.scrollbars, "reveal");
+    const navigate = spyOn(front, "revealMessage");
+    for (const delta of [-1, 1]) {
+      scrollbar.calls.reset();
+      await panel._navigateMessage(delta);
+      expect(scrollbar).toHaveBeenCalledOnceWith(scrollport);
+      expect(navigate.calls.mostRecent().args).toEqual([messages[0]]);
+      expect([scrollport.scrollTop, scrollport.scrollLeft]).toEqual(position);
+    }
+  });
+
+  it("keeps sorting, message refreshes and scroll events quiet", async () => {
+    await publish([diagnostic("first", 0), diagnostic("second", 1)]);
+    const scrollbar = spyOn(lumine.scrollbars, "reveal");
+    panel.setSortMethod("severity");
+    await panel.update();
+    await publish([...messages, diagnostic("third", 2)]);
+    panel.refs.scrollport.dispatchEvent(new Event("scroll"));
+    await panel.update();
+    expect(scrollbar).not.toHaveBeenCalled();
   });
 
   it("disables clearing an empty or disconnected hub and guards direct calls", async () => {
@@ -317,12 +346,14 @@ describe("Panel diagnostic navigation", () => {
     spyOn(panel, "update").and.returnValue(pending.promise);
     const open = spyOn(panel, "_openMessage");
     const reveal = spyOn(front, "revealMessage");
+    const scrollbar = spyOn(lumine.scrollbars, "reveal");
     const navigation = panel._navigateMessage(1);
     front.setViewMode("file");
     pending.resolve();
     await navigation;
     expect(open).not.toHaveBeenCalled();
     expect(reveal).not.toHaveBeenCalled();
+    expect(scrollbar).not.toHaveBeenCalled();
     expect(panel._navigating).toBe(false);
   });
 
@@ -332,6 +363,7 @@ describe("Panel diagnostic navigation", () => {
       const pending = deferred();
       spyOn(panel, "update").and.returnValue(pending.promise);
       const reveal = spyOn(front, "revealMessage");
+      const scrollbar = spyOn(lumine.scrollbars, "reveal");
       const navigation = panel._navigateMessage(1);
       if (change === "removed") {
         messages = messages.slice(1);
@@ -342,6 +374,7 @@ describe("Panel diagnostic navigation", () => {
       pending.resolve();
       await navigation;
       expect(reveal).not.toHaveBeenCalled();
+      expect(scrollbar).not.toHaveBeenCalled();
       expect(panel._navigating).toBe(false);
     });
   }
