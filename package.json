@@ -51,13 +51,13 @@
     }
   },
   "dependencies": {
-    "@lumine-code/etch": "github:lumine-code/etch#dbf9084e0630ec126762b2cef4194452fda46037"
+    "@lumine-code/etch": "github:lumine-code/etch#f14f6299b97c58df979f817024830eb708a2c738"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "eslint": "^10.15.0",
     "eslint-config-prettier": "^10.1.8",
-    "eslint-plugin-n": "^18.5.0",
+    "eslint-plugin-n": "^18.6.0",
     "globals": "^17.14.0",
     "prettier": "^3.10.1"
   },
