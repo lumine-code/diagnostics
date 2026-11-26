@@ -625,7 +625,7 @@ class Diagnostics {
             </span>
             <button
               type="button"
-              class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-left"
+              class="diagnostics-navigation data-table-header-action native-key-bindings icon-button icon icon-arrow-left"
               dataset={{ tooltip: "Previous Diagnostic" }}
               attributes={{ "aria-label": "Previous Diagnostic" }}
               disabled={navigationDisabled}
@@ -633,7 +633,7 @@ class Diagnostics {
             />
             <button
               type="button"
-              class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-right"
+              class="diagnostics-navigation data-table-header-action native-key-bindings icon-button icon icon-arrow-right"
               dataset={{ tooltip: "Next Diagnostic" }}
               attributes={{ "aria-label": "Next Diagnostic" }}
               disabled={navigationDisabled}
@@ -641,7 +641,7 @@ class Diagnostics {
             />
             <button
               type="button"
-              class="diagnostics-clear data-table-header-action native-key-bindings icon icon-x"
+              class="diagnostics-clear data-table-header-action native-key-bindings icon-button icon-button-no-scale icon icon-x"
               dataset={{ tooltip: "Clear All Diagnostics" }}
               attributes={{ "aria-label": "Clear All Diagnostics" }}
               disabled={!this.pkg.hub || this.pkg.messages.length === 0 || this._navigating}
