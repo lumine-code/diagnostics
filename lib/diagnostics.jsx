@@ -2,10 +2,17 @@
 const etch = require("@lumine-code/etch");
 const path = require("path");
 const { CompositeDisposable, Emitter } = require("lumine");
-const { renderExcerpt, messageSubject, editorForBuffer } = require("./helpers");
+const {
+  renderExcerpt,
+  messageSubject,
+  editorForBuffer,
+  relatedFileTarget,
+  supplementaryDescription,
+} = require("./helpers");
 
 const PANEL_URI = "lumine://diagnostics";
 const EXTERNAL_URL_PROTOCOLS = new Set(["http:", "https:", "mailto:"]);
+const INLINE_DESCRIPTION_LIMIT = 48;
 
 const externalUrl = (value) => {
   try {
@@ -52,6 +59,8 @@ class Diagnostics {
     // Rendered as a class from state — never patched into the DOM
     // behind etch's back.
     this._focusedMessage = null;
+    this._detailsMessage = null;
+    this._listViewport = null;
     // Header navigation keeps its place after revealing a message moves focus
     // to the editor, including when several diagnostics share one position.
     this._navigationMessage = null;
@@ -99,6 +108,7 @@ class Diagnostics {
       // Theme density can resize a row without resizing the viewport. Watch a
       // rendered row too, and rebuild the spacers whenever its height changes.
       this._resizeObserver = new ResizeObserver(() => {
+        if (this._detailsMessage || !scrollContainer.clientHeight) return;
         const previousHeight = this._rowHeight;
         this._rowHeight = 0;
         const rowHeight = this._measureRowHeight();
@@ -127,6 +137,12 @@ class Diagnostics {
     );
     this._disposables.add(
       lumine.commands.add(this.element, {
+        "diagnostics:open-details": {
+          description: "Inspect the clicked diagnostic.",
+          isAvailable: ({ target }) =>
+            !this._detailsMessage && Boolean(this._messageForRow(target)),
+          didDispatch: ({ target }) => this._openMessageDetails(this._messageForRow(target)),
+        },
         "diagnostics:copy-description": {
           description: "Copy the selected message's text to the clipboard.",
           didDispatch: () => this._copyDescription(),
@@ -137,21 +153,21 @@ class Diagnostics {
         },
         "core:move-up": (e) => {
           e.stopPropagation();
-          this._moveFocusUp();
+          if (!this._detailsMessage) this._moveFocusUp();
         },
         "core:move-down": (e) => {
           e.stopPropagation();
-          this._moveFocusDown();
+          if (!this._detailsMessage) this._moveFocusDown();
         },
         "core:confirm": (e) => {
-          if (e.target.closest?.(".data-table-sort")) return;
+          if (e.target.closest?.("button")) return;
           e.stopPropagation();
-          return this._confirmFocused();
+          if (!this._detailsMessage) return this._confirmFocused();
         },
         "core:cancel": (e) => {
           if (e.target.closest?.(".data-table-sort")) return;
           e.stopPropagation();
-          this._cancelFocus();
+          return this._detailsMessage ? this._closeMessageDetails() : this._cancelFocus();
         },
       }),
     );
@@ -171,6 +187,7 @@ class Diagnostics {
    */
   viewModeChanged() {
     this._navigationMessage = null;
+    this._detailsMessage = null;
     // Clear .current highlight BEFORE state reset (etch won't touch it)
     const currentRow = this.element?.querySelector(".diagnostics-row.current");
     if (currentRow) {
@@ -187,13 +204,13 @@ class Diagnostics {
    * Uses data attributes to find message position instead of closures.
    */
   _onRowClick(event) {
-    // Check if clicked on log reference link
-    const logRef = event.target.closest(".diagnostics-log-ref");
-    if (logRef) {
+    if (event.button !== 0) return;
+    const location = event.target.closest(".diagnostics-log-ref, .diagnostics-related-location");
+    if (location) {
       event.stopPropagation();
-      const file = logRef.dataset.file;
-      const line = parseInt(logRef.dataset.line, 10);
-      const column = parseInt(logRef.dataset.column, 10) || 0;
+      const file = location.dataset.file;
+      const line = parseInt(location.dataset.line, 10);
+      const column = parseInt(location.dataset.column, 10) || 0;
       if (file) {
         lumine.workspace.open(file, {
           initialLine: line,
@@ -219,26 +236,14 @@ class Diagnostics {
       return;
     }
 
-    // Find the clicked row
-    const row = event.target.closest(".diagnostics-row");
-    if (!row) return;
-
-    const rowIndex = row.dataset.index;
-    if (rowIndex === undefined) return;
-
-    const messages = this._getMessages();
-    const sortedMessages = this._getSortedMessages(messages);
-    const message = sortedMessages[parseInt(rowIndex, 10)];
+    if (this._detailsMessage) return;
+    const message = this._messageForRow(event.target);
     if (!message) return;
 
-    // A lazy description is resolved on demand; the row renders it inline once
-    // it arrives, so this does not move the cursor.
-    if (event.target.closest(".diagnostics-detail-toggle")) {
+    if (event.altKey) {
+      event.preventDefault();
       event.stopPropagation();
-      this.pkg.resolveDescription(message).then(() => {
-        // The panel can be gone by the time a slow provider answers.
-        if (this.element) this.update();
-      });
+      void this._openMessageDetails(message);
       return;
     }
 
@@ -251,18 +256,9 @@ class Diagnostics {
   }
 
   _onRowMiddleClick(event) {
-    const row = event.target.closest(".diagnostics-row");
-    if (!row) return;
-
-    const rowIndex = row.dataset.index;
-    if (rowIndex === undefined) return;
-
-    const messages = this._getMessages();
-    const sortedMessages = this._getSortedMessages(messages);
-    const message = sortedMessages[parseInt(rowIndex, 10)];
-    if (!message) return;
-
-    this.pkg.deleteMessage(message);
+    if (this._detailsMessage || event.target.closest(".diagnostics-related-location")) return;
+    const message = this._messageForRow(event.target);
+    if (message) this.pkg.deleteMessage(message);
   }
 
   setEditor(editor) {
@@ -413,9 +409,7 @@ class Diagnostics {
     return sortedMessages;
   }
 
-  // Copies the message text itself: the excerpt, plus the long form when the
-  // provider supplied one. Reading it off the row would pick up the "details"
-  // and "more info" affordances as well.
+  // Copy the provider's full text, including descriptions resolved on demand.
   _copyDescription() {
     const message = this._contextMessage();
     if (!message) return;
@@ -425,11 +419,13 @@ class Diagnostics {
   }
 
   _contextMessage() {
-    if (!this._contextRow) return null;
-    const index = parseInt(this._contextRow.dataset.index, 10);
-    if (isNaN(index)) return null;
-    const messages = this._getMessages();
-    return this._getSortedMessages(messages)[index] || null;
+    return this._messageForRow(this._contextRow);
+  }
+
+  _messageForRow(target) {
+    const row = target?.closest?.(".diagnostics-row");
+    if (!row || row.parentElement !== this.refs.scrollport) return null;
+    return this._getSortedMessages(this._getMessages())[Number(row.dataset.index)] ?? null;
   }
 
   _copyDetails() {
@@ -454,6 +450,120 @@ class Diagnostics {
       }
     }
     return path.basename(filePath);
+  }
+
+  async _openMessageDetails(message) {
+    if (!message || this.destroyed || this._detailsMessage) return;
+    const list = this._scrollContainer();
+    this._listViewport = list && { clientHeight: list.clientHeight, scrollTop: list.scrollTop };
+    this._detailsMessage = message;
+    const rendered = this.update();
+    if (this.pkg.hasLazyDescription(message)) {
+      void this.pkg.resolveDescription(message).then(() => {
+        if (!this.destroyed && this._detailsMessage === message) void this.update();
+      });
+    }
+    await rendered;
+    if (!this.destroyed && this._detailsMessage === message) {
+      this.refs.detailsBack?.focus({ preventScroll: true });
+    }
+  }
+
+  async _closeMessageDetails() {
+    this._detailsMessage = null;
+    await this.update();
+    if (!this.destroyed && !this._detailsMessage) {
+      this.element.focus({ preventScroll: true });
+    }
+  }
+
+  _renderRelatedLocation(item, message) {
+    const target = relatedFileTarget(item);
+    const { file, row, column, position, label } = target;
+    const pathApi = /^[A-Za-z]:[\\/]|^\\\\/.test(file) ? path.win32 : path;
+    const normalizePath = this.pkg.hub?.normalizePath;
+    const sameFile = normalizePath
+      ? normalizePath(file) === normalizePath(message.location.file)
+      : file === message.location.file;
+    const [root, relative] = sameFile ? [] : lumine.project.relativizePath(file);
+    const name = root ? relative : pathApi.basename(file);
+    return (
+      <button
+        type="button"
+        class="diagnostics-related-location native-key-bindings"
+        dataset={{ file, line: row, column }}
+        title={label}
+        attributes={{ "aria-label": `${item.message} ${label}` }}
+      >
+        {`${name}:${position}`}
+      </button>
+    );
+  }
+
+  _renderMessageDetails(message) {
+    const description = supplementaryDescription(message, this.pkg.getDescription(message));
+    const related = message.relatedInformation ?? [];
+    const hasCode = message.code != null && message.code !== "";
+    const severity = this.pkg.severities.get(message.severity);
+    return (
+      <section
+        class="diagnostics-message-details"
+        attributes={{ "aria-label": "Diagnostic details" }}
+      >
+        <header class="diagnostics-message-details-header">
+          <button
+            type="button"
+            class="btn diagnostics-back-to-list native-key-bindings icon icon-arrow-left"
+            ref="detailsBack"
+            title="Back to diagnostics"
+            attributes={{ "aria-label": "Back to diagnostics" }}
+            on={{ click: () => this._closeMessageDetails() }}
+          >
+            Back
+          </button>
+          <span
+            class={severity ? this.pkg.severities.classFor(severity.name) : "diagnostics-severity"}
+          >
+            {severity?.label ?? String(message.severity)}
+          </span>
+          <span class="diagnostics-message-details-title" title={message.source}>
+            {message.linterName || message.source}
+          </span>
+          {hasCode ? <code class="diagnostics-code">{String(message.code)}</code> : null}
+        </header>
+        <div
+          class="diagnostics-message-details-body native-key-bindings"
+          tabIndex="0"
+          attributes={{ "data-scrollbar": "auto" }}
+          on={{ click: this._onRowClick }}
+        >
+          <div
+            class="diagnostics-message-details-excerpt"
+            innerHTML={renderExcerpt(message.excerpt)}
+          />
+          {description ? (
+            <div class="diagnostics-message-details-description">{description}</div>
+          ) : null}
+          {this.pkg.hasLazyDescription(message) ? (
+            <div role="status">Loading description…</div>
+          ) : null}
+          {related.length > 0 ? (
+            <ul class="diagnostics-message-details-related">
+              {related.map((item) => (
+                <li>
+                  <div>{item.message}</div>
+                  {item.location?.file ? (
+                    this._renderRelatedLocation(item, message)
+                  ) : (
+                    <div>{item.uri}</div>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : null}
+        </div>
+      </section>
+    );
   }
 
   destroy() {
@@ -490,6 +600,13 @@ class Diagnostics {
     const currentRow = this.element?.querySelector(".diagnostics-row.current");
     if (currentRow) currentRow.classList.remove("current");
     return etch.update(this).then(() => {
+      if (this.destroyed || this._detailsMessage) return;
+      const list = this._scrollContainer();
+      if (this._listViewport && list?.clientHeight) {
+        list.scrollTop = this._listViewport.scrollTop;
+        this._listViewport = null;
+        return this._onScroll();
+      }
       // The first render had no row to measure and put up a bootstrap window.
       // Now that one exists, take the real window rather than waiting for a
       // scroll that may never come. `_rowHeight` is set from here on, so this
@@ -502,7 +619,7 @@ class Diagnostics {
 
   readAfterUpdate() {
     this._syncHeaderTooltips();
-    this._updateCurrentRowHighlight();
+    if (!this._detailsMessage) this._updateCurrentRowHighlight();
     this._observeRow();
   }
 
@@ -552,6 +669,7 @@ class Diagnostics {
     // Keep sorting lazy while the dock is hidden, including for button state.
     const onScreen = this._isOnScreen();
     const visible = onScreen ? this._visibleMessages() : [];
+    const details = this._detailsMessage;
     const navigationDisabled = visible.length === 0 || this._navigating;
     const empty = onScreen && visible.length === 0;
     const emptyMessage =
@@ -625,7 +743,7 @@ class Diagnostics {
             </span>
             <button
               type="button"
-              class="diagnostics-navigation data-table-header-action native-key-bindings icon-button icon icon-arrow-left"
+              class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-left"
               dataset={{ tooltip: "Previous Diagnostic" }}
               attributes={{ "aria-label": "Previous Diagnostic" }}
               disabled={navigationDisabled}
@@ -633,7 +751,7 @@ class Diagnostics {
             />
             <button
               type="button"
-              class="diagnostics-navigation data-table-header-action native-key-bindings icon-button icon icon-arrow-right"
+              class="diagnostics-navigation data-table-header-action native-key-bindings icon icon-arrow-right"
               dataset={{ tooltip: "Next Diagnostic" }}
               attributes={{ "aria-label": "Next Diagnostic" }}
               disabled={navigationDisabled}
@@ -641,7 +759,7 @@ class Diagnostics {
             />
             <button
               type="button"
-              class="diagnostics-clear data-table-header-action native-key-bindings icon-button icon-button-no-scale icon icon-x"
+              class="diagnostics-clear data-table-header-action native-key-bindings icon icon-x"
               dataset={{ tooltip: "Clear All Diagnostics" }}
               attributes={{ "aria-label": "Clear All Diagnostics" }}
               disabled={!this.pkg.hub || this.pkg.messages.length === 0 || this._navigating}
@@ -669,7 +787,7 @@ class Diagnostics {
     const data = [];
     // Sorting and filtering are only worth their O(n log n) when a row can come
     // of them; an off-screen panel renders an empty tbody.
-    const { start, end } = this._visibleWindow(visible.length);
+    const { start, end } = details ? { start: 0, end: 0 } : this._visibleWindow(visible.length);
     this._window = { start, end };
 
     for (let visibleIndex = start; visibleIndex < end; visibleIndex++) {
@@ -728,24 +846,36 @@ class Diagnostics {
         }
       }
 
-      // Excerpt first, then whatever long form the provider attached: the
-      // resolved description, an affordance to resolve a lazy one, and the
-      // "more info" link for `url`.
       const descriptionContent = [
-        <span class="diagnostics-excerpt" innerHTML={renderExcerpt(message.excerpt)} />,
+        <span
+          class="diagnostics-excerpt"
+          title={message.excerpt}
+          innerHTML={renderExcerpt(message.excerpt)}
+        />,
       ];
+      const hasCode = message.code != null && message.code !== "";
+      const related = message.relatedInformation ?? [];
+      const origin = related.find((item) => item.location?.file);
       const description = this.pkg.getDescription(message);
-      if (description) {
-        // Plain text, not markdown: the detail sits inline after the excerpt on
-        // one line, and `title` carries the full text — a rule code such as
-        // "Ruff: F401" is short, related information is not.
+      const inlineDescription =
+        !hasCode &&
+        !message.source &&
+        related.length === 0 &&
+        description &&
+        description.length <= INLINE_DESCRIPTION_LIMIT &&
+        !description.includes("\n");
+      if (hasCode) {
+        descriptionContent.push(<code class="diagnostics-code">{String(message.code)}</code>);
+      }
+      if (origin) {
+        descriptionContent.push(this._renderRelatedLocation(origin, message));
+      }
+      if (inlineDescription) {
         descriptionContent.push(
           <span class="diagnostics-detail" title={description}>
             {description}
           </span>,
         );
-      } else if (this.pkg.hasLazyDescription(message)) {
-        descriptionContent.push(<a class="diagnostics-detail-toggle">details</a>);
       }
       const moreInfoURL = externalUrl(message.url);
       if (moreInfoURL) {
@@ -795,7 +925,7 @@ class Diagnostics {
       );
     }
     rows.push(...data);
-    if (rowHeight && end < visible.length) {
+    if (!details && rowHeight && end < visible.length) {
       rows.push(
         <tr
           key="diagnostics-spacer-after"
@@ -810,8 +940,14 @@ class Diagnostics {
       // the panel is reached with alt-l or a click, not by tabbing through the
       // window, and 0 puts it in the document's tab order between the editor
       // and whatever comes next.
-      <div class="diagnostics tab-content-separated data-table-container" tabIndex="-1">
-        <table class={`diagnostics-table data-table${empty ? " is-empty" : ""}`}>
+      <div
+        class={`diagnostics data-table-container${details ? "" : " tab-content-separated"}`}
+        tabIndex="-1"
+      >
+        <table
+          class={`diagnostics-table data-table${empty ? " is-empty" : ""}`}
+          hidden={Boolean(details)}
+        >
           <thead>{head}</thead>
           <tbody
             ref="scrollport"
@@ -821,7 +957,8 @@ class Diagnostics {
             {rows}
           </tbody>
         </table>
-        {empty ? (
+        {onScreen && details ? this._renderMessageDetails(details) : null}
+        {empty && !details ? (
           <div class="panel-empty-state">
             <background-tips>
               <ul class="centered background-message">
@@ -961,6 +1098,9 @@ class Diagnostics {
     if (this._navigationMessage && !messageIndices.has(this._navigationMessage)) {
       this._navigationMessage = navigationReplacement;
     }
+    if (this._detailsMessage && !messageIndices.has(this._detailsMessage)) {
+      this._detailsMessage = null;
+    }
     this._visibleCache = {
       sorted,
       generation: this._filterGeneration,
@@ -1056,19 +1196,21 @@ class Diagnostics {
     if (!this._isOnScreen()) {
       return { start: 0, end: 0 };
     }
-    const container = this._scrollContainer();
+    // The live table has no box on the first render back from details.
+    // The saved viewport lets that render build the right rows and spacers.
+    const viewport = this._listViewport ?? this._scrollContainer();
     const rowHeight = this._measureRowHeight();
-    if (!container || !rowHeight || !container.clientHeight) {
+    if (!viewport?.clientHeight || !rowHeight) {
       return { start: 0, end: Math.min(total, Diagnostics.BOOTSTRAP_ROWS) };
     }
 
-    const count = Math.ceil(container.clientHeight / rowHeight);
+    const count = Math.ceil(viewport.clientHeight / rowHeight);
     // A resize or a shorter message list can leave scrollTop beyond the new
     // list until the DOM is patched. Keep the rendered slice inside the list
     // so its spacers cannot perpetuate that stale scroll height.
     const first = Math.min(
       Math.max(0, total - count),
-      Math.max(0, Math.floor(container.scrollTop / rowHeight)),
+      Math.max(0, Math.floor(viewport.scrollTop / rowHeight)),
     );
     const block = Diagnostics.BLOCK_ROWS;
     const start = Math.max(0, Math.floor((first - Diagnostics.OVERSCAN) / block) * block);
@@ -1079,10 +1221,11 @@ class Diagnostics {
   // Scrolling only redraws when it has actually changed which rows belong on
   // screen. Without this the panel would re-render on every wheel tick.
   _onScroll() {
+    if (this.destroyed || this._detailsMessage) return;
     const total = this._isOnScreen() ? this._visibleMessages().length : 0;
     const next = this._visibleWindow(total);
     if (next.start === this._window.start && next.end === this._window.end) return;
-    this.update();
+    return this.update();
   }
 
   // Keyboard navigation starts from the editor's current message even when

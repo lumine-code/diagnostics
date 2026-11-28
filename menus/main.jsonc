@@ -37,12 +37,13 @@
       ]
     }
   ],
-  // Right-click a row to take its text. Declared here rather than added from
+  // Right-click a row to inspect or copy its text. Declared here rather than added from
   // the panel's constructor: a menu file is registered once for the package,
   // where lumine.contextMenu.add never de-duplicates.
   "context-menu": {
     ".diagnostics .diagnostics-row": [
       { "type": "separator" },
+      { "label": "Open Details", "command": "diagnostics:open-details" },
       { "label": "Copy Description", "command": "diagnostics:copy-description" },
       { "label": "Copy Details", "command": "diagnostics:copy-details" },
       { "type": "separator" }

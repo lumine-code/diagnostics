@@ -46,12 +46,13 @@ describe("diagnostics package assets", () => {
     expect(flat).not.toContain('"commands"');
   });
 
-  it("puts the row copy commands in a context menu, fenced by separators", () => {
+  it("puts the row commands in a context menu, fenced by separators", () => {
     const menu = parseJsonc("menus/main.jsonc");
     const rows = menu["context-menu"][".diagnostics .diagnostics-row"];
     expect(rows[0].type).toBe("separator");
     expect(rows[rows.length - 1].type).toBe("separator");
     expect(rows.map((item) => item.command).filter(Boolean)).toEqual([
+      "diagnostics:open-details",
       "diagnostics:copy-description",
       "diagnostics:copy-details",
     ]);

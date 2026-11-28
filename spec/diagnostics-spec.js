@@ -3,6 +3,7 @@ const { Front } = require("../lib/front");
 const { normalize, fakeHub } = require("./fake-hub");
 const path = require("node:path");
 const { ipcRenderer } = require("electron");
+const { Range } = require("lumine");
 
 // The panel header, the severity filter and the severity sort are all driven by
 // the severity vocabulary the hub hands over. These specs pin the
@@ -31,6 +32,8 @@ describe("lib/diagnostics", () => {
     Array.from(panel.element.querySelectorAll(".diagnostics-row")).map(
       (row) => row.querySelector(".diagnostics-severity")?.textContent,
     );
+  const altClick = (target) =>
+    target.dispatchEvent(new MouseEvent("click", { bubbles: true, altKey: true }));
 
   // The real front end against a stand-in hub: the seam under test is the panel
   // against the front end, and the front end is thin enough that stubbing it
@@ -516,9 +519,6 @@ describe("lib/diagnostics", () => {
     );
   });
 
-  // The description cell used to render the excerpt and nothing else, so
-  // `Message.description` and `Message.url` — where a language server puts its
-  // rule code and its documentation link — never reached the panel at all.
   describe("the description cell", () => {
     const publishOne = async (overrides) => {
       messages = normalize([Object.assign(message("error"), overrides)]);
@@ -534,6 +534,159 @@ describe("lib/diagnostics", () => {
     };
 
     const cell = () => panel.element.querySelector(".diagnostics-description");
+    const excerpt = () => cell().querySelector(".diagnostics-excerpt");
+    const details = () => panel.element.querySelector(".diagnostics-message-details");
+    const table = () => panel.element.querySelector(".diagnostics-table");
+    const back = () => panel.element.querySelector("button.diagnostics-back-to-list");
+    const projectPath = path.resolve("Long project directory with SOFiSTiK files");
+    const mainFile = path.join(projectPath, "[c] main.dat");
+    const includeFile = path.join(projectPath, "includes", "loads.dat");
+    const sofistikDiagnostic = () => ({
+      linterName: "SOFiSTiK Language Server",
+      location: {
+        file: mainFile,
+        position: new Range([1015, 0], [1015, 20]),
+      },
+      excerpt: "Cannot resolve preprocessor include mlc-train.",
+      code: "G012",
+      source: "sofistik-preprocessor",
+      relatedInformation: [
+        {
+          message: "Original preprocessor source.",
+          location: { file: mainFile, position: new Range([721, 0], [721, 18]) },
+        },
+        {
+          message: "Preprocessor parameter definition.",
+          location: { file: includeFile, position: new Range([20, 2], [20, 6]) },
+        },
+      ],
+      description: `sofistik-preprocessor: G012\n\n${mainFile}:722:1: Original preprocessor source.\n${includeFile}:21:3: Preprocessor parameter definition.`,
+    });
+
+    it("keeps the diagnostic summary and its original source distinct from the row target", async () => {
+      const open = spyOn(lumine.workspace, "open").and.resolveTo();
+      const reveal = spyOn(front, "revealMessage");
+      const diagnostic = sofistikDiagnostic();
+      await publishOne(diagnostic);
+
+      expect(excerpt().textContent.trim()).toBe(diagnostic.excerpt);
+      expect(cell().querySelector(".diagnostics-code").textContent).toBe("G012");
+      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
+      expect(cell().textContent).not.toContain(projectPath);
+      expect(panel.element.querySelector(".diagnostics-position").textContent).toContain("1016:1");
+
+      const origin = cell().querySelector("button.diagnostics-related-location");
+      expect(origin.textContent.trim()).toBe("[c] main.dat:722:1");
+      altClick(origin);
+      await panel.update();
+      expect(open).toHaveBeenCalledOnceWith(mainFile, {
+        initialLine: 721,
+        initialColumn: 0,
+        pending: true,
+      });
+      expect(reveal).not.toHaveBeenCalled();
+      expect(details()).toBeNull();
+
+      excerpt().click();
+      expect(reveal).toHaveBeenCalledOnceWith(messages[0]);
+    });
+
+    it("opens full details from a row command and returns to the same table with Back", async () => {
+      spyOn(lumine.project, "relativizePath").and.callFake((file) => [
+        projectPath,
+        path.relative(projectPath, file),
+      ]);
+      const open = spyOn(lumine.workspace, "open").and.resolveTo();
+      const reveal = spyOn(front, "revealMessage");
+      const diagnostic = sofistikDiagnostic();
+      await publishOne(diagnostic);
+      const list = table();
+      await lumine.commands.dispatch(excerpt(), "diagnostics:open-details");
+      await panel.update();
+
+      const region = details();
+      expect(list.hidden).toBeTrue();
+      expect(region.closest("tbody")).toBeNull();
+      expect(region.textContent).toContain(diagnostic.excerpt);
+      expect(region.textContent).toContain("Original preprocessor source.");
+      expect(region.textContent).toContain("Preprocessor parameter definition.");
+      expect(region.textContent).not.toContain(projectPath);
+      const related = Array.from(region.querySelectorAll("button.diagnostics-related-location"));
+      expect(related.map((link) => link.textContent.trim().replaceAll("\\", "/"))).toEqual([
+        "[c] main.dat:722:1",
+        "includes/loads.dat:21:3",
+      ]);
+      related[1].click();
+      expect(open).toHaveBeenCalledOnceWith(includeFile, {
+        initialLine: 20,
+        initialColumn: 2,
+        pending: true,
+      });
+      expect(reveal).not.toHaveBeenCalled();
+
+      expect(back().getAttribute("aria-label")).toBe("Back to diagnostics");
+      back().click();
+      await panel.update();
+      expect(details()).toBeNull();
+      expect(table()).toBe(list);
+      expect(list.hidden).toBeFalse();
+    });
+
+    it("preserves provider prose and displays a URI-only related item as text", async () => {
+      const description = "This include depends on the active template.\nUse a named template.";
+      const uri = "untitled:generated.dat";
+      await publishOne({
+        code: "G012",
+        description,
+        relatedInformation: [{ message: "Generated source.", uri }],
+      });
+
+      altClick(excerpt());
+      await panel.update();
+
+      expect(table().hidden).toBeTrue();
+      expect(details().querySelector(".diagnostics-message-details-description").textContent).toBe(
+        description,
+      );
+      const related = details().querySelector(".diagnostics-message-details-related li");
+      expect(related.textContent).toContain("Generated source.");
+      expect(related.textContent).toContain(uri);
+      expect(related.querySelector("a, button")).toBeNull();
+    });
+
+    it("renders zero as a structured diagnostic code", async () => {
+      await publishOne({ code: 0 });
+      expect(cell().querySelector(".diagnostics-code").textContent).toBe("0");
+    });
+
+    it("fits the SOFiSTiK excerpt and fills the dock with details until Back restores the row", async () => {
+      const stylesheet = lumine.themes.requireStylesheet(require.resolve("../styles/main.css"));
+      try {
+        panel.element.style.width = "700px";
+        panel.element.style.height = "160px";
+        await publishOne(sofistikDiagnostic());
+
+        const rowHeight = cell().closest("tr").getBoundingClientRect().height;
+        expect(excerpt().clientWidth).toBeGreaterThan(0);
+        expect(excerpt().scrollWidth).toBeLessThanOrEqual(excerpt().clientWidth);
+
+        altClick(excerpt());
+        await panel.update();
+
+        expect(table().getBoundingClientRect().height).toBe(0);
+        const panelBounds = panel.element.getBoundingClientRect();
+        const detailsBounds = details().getBoundingClientRect();
+        expect(detailsBounds.height).toBeGreaterThan(panelBounds.height - rowHeight);
+        expect(detailsBounds.bottom).toBeLessThanOrEqual(panelBounds.bottom);
+
+        back().click();
+        await panel.update();
+        expect(cell().closest("tr").getBoundingClientRect().height).toBe(rowHeight);
+        expect(details()).toBeNull();
+      } finally {
+        stylesheet.dispose();
+      }
+    });
 
     it("renders the excerpt beside a string description", async () => {
       await publishOne({ description: "Ruff: F401" });
@@ -541,18 +694,16 @@ describe("lib/diagnostics", () => {
       const detail = cell().querySelector(".diagnostics-detail");
       expect(detail.textContent).toBe("Ruff: F401");
       expect(detail.title).toBe("Ruff: F401");
-      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
     });
 
     it("renders only the excerpt when the message has no long form", async () => {
       await publishOne({});
       expect(cell().querySelector(".diagnostics-excerpt").textContent.trim()).toBe("error at 0");
       expect(cell().querySelector(".diagnostics-detail")).toBeNull();
-      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
       expect(cell().querySelector(".diagnostics-more-info")).toBeNull();
     });
 
-    it("resolves a lazy description when its affordance is clicked", async () => {
+    it("resolves a lazy description on opening details and returns to the list with Escape", async () => {
       let calls = 0;
       await publishOne({
         description: () => {
@@ -563,12 +714,16 @@ describe("lib/diagnostics", () => {
       expect(calls).toBe(0);
       expect(cell().querySelector(".diagnostics-detail")).toBeNull();
 
-      cell().querySelector(".diagnostics-detail-toggle").click();
+      altClick(excerpt());
       await settle();
 
       expect(calls).toBe(1);
-      expect(cell().querySelector(".diagnostics-detail").textContent).toBe("the long form");
-      expect(cell().querySelector(".diagnostics-detail-toggle")).toBeNull();
+      expect(details().textContent).toContain("the long form");
+
+      await lumine.commands.dispatch(back(), "core:cancel");
+      await panel.update();
+      expect(details()).toBeNull();
+      expect(table().hidden).toBeFalse();
     });
 
     it("opens the message url externally instead of revealing the message", async () => {
@@ -764,6 +919,26 @@ describe("lib/diagnostics", () => {
       expect(indices[0]).toBeLessThanOrEqual(2000);
       expect(indices[indices.length - 1]).toBeGreaterThanOrEqual(2000);
       expect(indices.length).toBeLessThan(200);
+    });
+
+    it("restores the virtual list scroll position after returning from details", async () => {
+      const container = scrollContainer();
+      container.scrollTop = 2000 * panel._rowHeight;
+      await panel.update();
+      const scrollTop = container.scrollTop;
+      const selected = container.querySelector('[data-visible-index="2000"] .diagnostics-excerpt');
+      altClick(selected);
+      await panel.update();
+
+      const details = panel.element.querySelector(".diagnostics-message-details");
+      expect(details.textContent).toContain("error at 2000");
+      panel.element.querySelector("button.diagnostics-back-to-list").click();
+      await panel.update();
+
+      expect(container.closest("table").hidden).toBeFalse();
+      expect(container.scrollTop).toBe(scrollTop);
+      expect(renderedIndices()).toContain(2000);
+      expect(renderedIndices().length).toBeLessThan(200);
     });
 
     it("does not re-render for a scroll that does not change the window", () => {
